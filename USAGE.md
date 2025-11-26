@@ -1,3 +1,10 @@
+Segue o Makefile reescrito inteiro, já com:
+
+* `deps-main` para listar dependências da lib principal.
+* `deps-apk` para listar dependências das `.so` dentro do APK.
+* `apk` agora **vira alias de `apk-readelf`** (ou seja, usa o pipeline robusto com `readelf` + `copy-deps`, não usa mais `ndk-depends` pra montar libs).
+
+```make
 # ============================================================
 # Makefile simples para:
 #  - gerar Makefile Android com qmake
@@ -187,27 +194,8 @@ copy-deps:
 				break; \
 			fi; \
 		done; \
-		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado (na lista): $$dep"; \
+		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado: $$dep"; \
 	done < "$(BUILD_DIR)/all-deps-readelf.txt"
-
-	@echo ""
-	@echo "🔧 Forçando cópia das libs wx principais (se existirem)..."
-	@for extra in \
-		libwx_qtu_core-3.2-Android_$(QT_ARCH).so \
-		libwx_baseu-3.2-Android_$(QT_ARCH).so; do \
-		FOUND=0; \
-		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" ; do \
-			if [ -f "$$search_path/$$extra" ]; then \
-				echo "  ✅ (forçado) $$extra <- $$search_path"; \
-				cp -v "$$search_path/$$extra" "$(ANDROID_LIB_DIR)/" || true; \
-				FOUND=1; \
-				break; \
-			fi; \
-		done; \
-		if [ $$FOUND -eq 0 ]; then \
-			echo "  ⚠️  (forçado) $$extra não encontrado em WX/Qt libs"; \
-		fi; \
-	done
 
 # ---------- Gera APK com androiddeployqt (usando readelf) ----------
 apk-readelf: build find-deps-readelf copy-deps
@@ -409,3 +397,168 @@ sdk:
 	@adb shell getprop ro.build.version.sdk
 
 # eof
+```
+
+Sugestão pra testar esse “novo ciclo”:
+
+```bash
+make clean
+make deps-main        # só pra conferir a lista de NEEDED
+make apk              # agora usa apk-readelf
+make verify-apk
+make deps-apk         # se quiser ver dependências de cada .so
+```
+
+Se der algum erro estranho do `readelf` ou faltar alguma lib nos diretórios que definimos, me manda a saída e ajustamos os caminhos finos.
+
+
+
+Boa, agora temos o sintoma claro:
+
+```txt
+java.lang.UnsatisfiedLinkError: dlopen failed: library "libwx_qtu_core-3.2-Android_arm64-v8a.so" not found:
+needed by .../libwxapp_arm64-v8a.so
+```
+
+Traduzindo:
+👉 o **loader do Android não achou `libwx_qtu_core-3.2-Android_arm64-v8a.so` dentro do app**, então na hora de carregar `libwxapp_arm64-v8a.so` ele cai com `UnsatisfiedLinkError`.
+
+Isso só pode ser uma destas coisas:
+
+1. A lib **não está dentro do APK** (não foi empacotada).
+2. Ela está no APK mas **com outro nome/caminho** (bem improvável aqui).
+3. Tem no APK, mas em um lugar onde o loader não procura (tipo subpasta estranha, também improvável se o `androiddeployqt` montou).
+
+Na prática: quase certo que o APK não está carregando essa `.so`.
+
+---
+
+## 1. O que eu vou supor e arrumar direto
+
+Pra não ficar só no “me manda a saída do comando X”, vou ajustar o Makefile pra:
+
+* Continuar usando o fluxo robusto com `readelf`.
+* **Forçar explicitamente** a cópia das duas libs principais do wx:
+
+  * `libwx_qtu_core-3.2-Android_arm64-v8a.so`
+  * `libwx_baseu-3.2-Android_arm64-v8a.so`
+
+Mesmo que, por alguma razão, elas não apareçam na lista de `all-deps-readelf.txt`.
+
+Isso garante que essas duas **sempre** vão parar em `build/android/libs/arm64-v8a/`, e o `androiddeployqt` vai incluí-las no APK.
+
+Vou te passar só o trecho do `copy-deps` atualizado, pra você substituir naquele Makefile grandão que eu enviei antes.
+
+---
+
+## 2. Novo `copy-deps` (com “força bruta” pros wx)
+
+Substitua **apenas** o alvo `copy-deps` do Makefile por este:
+
+```make
+# ---------- Copia dependências encontradas para android/libs ----------
+.PHONY: copy-deps
+copy-deps:
+	@if [ ! -f "$(BUILD_DIR)/all-deps-readelf.txt" ]; then \
+		echo "❌ Erro: execute 'make find-deps-readelf' primeiro!"; \
+		exit 1; \
+	fi
+	@echo "📦 Copiando dependências para $(ANDROID_LIB_DIR)..."
+	@mkdir -p "$(ANDROID_LIB_DIR)"
+	@while read dep; do \
+		[ -z "$$dep" ] && continue; \
+		COPIED=0; \
+		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+			if [ -f "$$search_path/$$dep" ]; then \
+				echo "  ✅ $$dep <- $$search_path"; \
+				cp -v "$$search_path/$$dep" "$(ANDROID_LIB_DIR)/" || true; \
+				COPIED=1; \
+				break; \
+			fi; \
+		done; \
+		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado (na lista): $$dep"; \
+	done < "$(BUILD_DIR)/all-deps-readelf.txt"
+
+	@echo ""
+	@echo "🔧 Forçando cópia das libs wx principais (se existirem)..."
+	@for extra in \
+		libwx_qtu_core-3.2-Android_$(QT_ARCH).so \
+		libwx_baseu-3.2-Android_$(QT_ARCH).so; do \
+		FOUND=0; \
+		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" ; do \
+			if [ -f "$$search_path/$$extra" ]; then \
+				echo "  ✅ (forçado) $$extra <- $$search_path"; \
+				cp -v "$$search_path/$$extra" "$(ANDROID_LIB_DIR)/" || true; \
+				FOUND=1; \
+				break; \
+			fi; \
+		done; \
+		if [ $$FOUND -eq 0 ]; then \
+			echo "  ⚠️  (forçado) $$extra não encontrado em WX/Qt libs"; \
+		fi; \
+	done
+```
+
+Repara nesses pontos:
+
+* `WX_LIB_DIR` já está definido como:
+
+  ```make
+  WX_LIB_DIR := $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib
+  ```
+
+  que é exatamente onde você já tinha as `.so` (`EXTRA_WX_LIBS` antigo mostrava isso).
+* Eu usei o padrão:
+
+  ```make
+  libwx_qtu_core-3.2-Android_$(QT_ARCH).so
+  libwx_baseu-3.2-Android_$(QT_ARCH).so
+  ```
+
+  → para `QT_ARCH = arm64-v8a`, vira exatamente:
+
+  * `libwx_qtu_core-3.2-Android_arm64-v8a.so`
+  * `libwx_baseu-3.2-Android_arm64-v8a.so`
+
+Se por acaso o nome do arquivo for *ligeiramente* diferente, esse laço “forçado” já vai te imprimir:
+
+```txt
+⚠️  (forçado) libwx_qtu_core-3.2-Android_arm64-v8a.so não encontrado em WX/Qt libs
+```
+
+e a gente ajusta o nome depois.
+
+---
+
+## 3. Sequência pra testar
+
+Depois de atualizar o `copy-deps`:
+
+```bash
+make clean
+make apk          # ainda é alias de apk-readelf
+make verify-apk
+```
+
+No `make verify-apk`, veja se na listagem aparece algo assim:
+
+```txt
+lib/arm64-v8a/libwx_qtu_core-3.2-Android_arm64-v8a.so
+lib/arm64-v8a/libwx_baseu-3.2-Android_arm64-v8a.so
+...
+```
+
+Se aparecerem e **mesmo assim** o Android reclamar que “libwx_qtu_core… not found”, aí é outro tipo de problema (namespace/linker).
+Mas 99% das vezes, só de garantir que essas `.so` estão no APK, o `UnsatisfiedLinkError` some.
+
+Se quiser, me manda a saída do:
+
+```bash
+make apk
+make verify-apk
+make log2
+```
+
+na próxima rodada, que a gente faz o ajuste fino (nomes exatos / pasta / etc.), mas com esse `copy-deps` você já deve ver uma boa diferença.
+
+

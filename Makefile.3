@@ -42,7 +42,7 @@ VERSION         ?= 36.1.0
 # Comando Gradle (wrapper local do projeto, se um dia quiser usar)
 GRADLE          := ./gradlew --warning-mode all
 
-# Ferramentas auxiliares
+# Ferramenta AAPT para extrair informações do APK
 AAPT            := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
 NDKDEPENDS      := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
 READELF         := $(ANDROID_TOOLCHAIN_PATH)/bin/llvm-readelf
@@ -61,9 +61,10 @@ apk_release     := build/android/build/outputs/apk/release/android-release.apk
 APK             := $(apk_debug)
 
 # Extrai o nome da Activity principal do APK (usado para start/stop)
+# Só executa se o APK existir, evitando erros na primeira execução
 ACTIVITYNAME    := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/launchable-activity: name='([^']+).*/\1/p")
 
-# Extrai o nome do pacote do APK
+# Extrai o nome do pacote do APK (ex: com.example.hangman)
 PACKAGE         := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/package: name='([^']+).*/\1/p")
 
 # ---------- Targets padrão ----------
@@ -98,18 +99,7 @@ build: configure
 	cd "$(BUILD_DIR)" && $(MAKE)
 	@echo "[OK] Build concluído."
 
-# ---------- Lista dependências diretas da lib principal ----------
-.PHONY: deps-main
-deps-main: build
-	@mkdir -p "$(BUILD_DIR)"
-	@echo "NEEDED de $(LIB_NAME) (lib principal) :" > "$(BUILD_DIR)/deps-main.txt"
-	@$(READELF) -d "$(BUILD_DIR)/$(LIB_NAME)" 2>/dev/null | \
-		grep NEEDED | awk '{print $$5}' | tr -d '[]' | sort -u >> "$(BUILD_DIR)/deps-main.txt"
-	@echo ""
-	@echo "📄 Dependências salvas em $(BUILD_DIR)/deps-main.txt"
-	@cat "$(BUILD_DIR)/deps-main.txt"
-
-# ---------- Helper: encontra dependências recursivamente com ndk-depends (mantido para testes) ----------
+# ---------- Helper: encontra dependências recursivamente com ndk-depends ----------
 .PHONY: find-deps-recursive
 find-deps-recursive:
 	@echo "🔍 Descobrindo dependências recursivamente com ndk-depends..."
@@ -187,27 +177,8 @@ copy-deps:
 				break; \
 			fi; \
 		done; \
-		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado (na lista): $$dep"; \
+		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado: $$dep"; \
 	done < "$(BUILD_DIR)/all-deps-readelf.txt"
-
-	@echo ""
-	@echo "🔧 Forçando cópia das libs wx principais (se existirem)..."
-	@for extra in \
-		libwx_qtu_core-3.2-Android_$(QT_ARCH).so \
-		libwx_baseu-3.2-Android_$(QT_ARCH).so; do \
-		FOUND=0; \
-		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" ; do \
-			if [ -f "$$search_path/$$extra" ]; then \
-				echo "  ✅ (forçado) $$extra <- $$search_path"; \
-				cp -v "$$search_path/$$extra" "$(ANDROID_LIB_DIR)/" || true; \
-				FOUND=1; \
-				break; \
-			fi; \
-		done; \
-		if [ $$FOUND -eq 0 ]; then \
-			echo "  ⚠️  (forçado) $$extra não encontrado em WX/Qt libs"; \
-		fi; \
-	done
 
 # ---------- Gera APK com androiddeployqt (usando readelf) ----------
 apk-readelf: build find-deps-readelf copy-deps
@@ -219,10 +190,59 @@ apk-readelf: build find-deps-readelf copy-deps
 			--android-platform "$(ANDROID_NDK_PLATFORM)"
 	@echo "[OK] APK gerado com dependências completas (readelf)."
 
-# ---------- apk: alias para o fluxo robusto (readelf) ----------
-apk: apk-readelf
+# ---------- Gera APK original (mantido para compatibilidade) ----------
+apk: build
+	@echo "==> Preparando biblioteca para androiddeployqt..."
+	@mkdir -p "$(ANDROID_LIB_DIR)"
+	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
+	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
 
-# ---------- Lista libs e dependências dentro do APK ----------
+	@echo "==> Descobrindo dependências nativas com ndk-depends..."
+	@NATIVE_DEPS=`"$(NDKDEPENDS)" \
+		-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
+		-L "$(QT_ANDROID_DIR)/lib" \
+		"$(ANDROID_LIB_DIR)/$(LIB_NAME)" 2>/dev/null | awk '{print $1}' | sort -u`; \
+	echo "   Dependências encontradas:"; \
+	echo "$NATIVE_DEPS"; \
+	echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."; \
+	COPIED=0; \
+	SKIPPED=0; \
+	for dep in $NATIVE_DEPS; do \
+		FOUND=0; \
+		lib_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/$dep"; \
+		bin_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/bin/$dep"; \
+		qt_path="$(QT_ANDROID_DIR)/lib/$dep"; \
+		sysroot_cpp="$(NDK_CPP_SYSROOT_DIR)/$dep"; \
+		stl_cpp="$(NDK_CPP_STL_DIR)/$dep"; \
+		if [ -f "$lib_path" ]; then \
+			cp -v "$lib_path" "$(ANDROID_LIB_DIR)/" && FOUND=1 && COPIED=$((COPIED+1)); \
+		elif [ -f "$bin_path" ]; then \
+			cp -v "$bin_path" "$(ANDROID_LIB_DIR)/" && FOUND=1 && COPIED=$((COPIED+1)); \
+		elif [ -f "$qt_path" ]; then \
+			cp -v "$qt_path" "$(ANDROID_LIB_DIR)/" && FOUND=1 && COPIED=$((COPIED+1)); \
+		elif [ -f "$sysroot_cpp" ]; then \
+			cp -v "$sysroot_cpp" "$(ANDROID_LIB_DIR)/" && FOUND=1 && COPIED=$((COPIED+1)); \
+		elif [ -f "$stl_cpp" ]; then \
+			cp -v "$stl_cpp" "$(ANDROID_LIB_DIR)/" && FOUND=1 && COPIED=$((COPIED+1)); \
+		fi; \
+		if [ $FOUND -eq 0 ]; then \
+			echo "  ⚠️  Ignorado (lib do sistema): $dep"; \
+			SKIPPED=$((SKIPPED+1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "✅ Libs copiadas: $COPIED"; \
+	echo "⚠️  Libs do sistema ignoradas: $SKIPPED"
+
+	@echo "==> Executando androiddeployqt..."
+	cd "$(BUILD_DIR)" && \
+		"$(ANDROIDDEPLOYQT)" \
+			--input "$(DEPLOY_JSON)" \
+			--output android \
+			--android-platform "$(ANDROID_NDK_PLATFORM)"
+	@echo "[OK] APK gerado/instalado."
+
+# ---------- Verifica libs dentro do APK gerado ----------
 .PHONY: verify-apk
 verify-apk:
 	@if [ ! -f "$(APK)" ]; then \
@@ -235,30 +255,6 @@ verify-apk:
 	@echo ""
 	@echo "📊 Total de libs:"
 	@unzip -l "$(APK)" | grep "lib/$(QT_ARCH)/" | grep "\.so$$" | wc -l
-
-# ---------- Lista dependências de todas as .so dentro do APK ----------
-.PHONY: deps-apk
-deps-apk:
-	@if [ ! -f "$(APK)" ]; then \
-		echo "❌ APK não encontrado: $(APK)"; \
-		echo "   Execute 'make apk' ou 'make apk-readelf' primeiro."; \
-		exit 1; \
-	fi
-	@echo "🔍 Extraindo libs do APK e listando NEEDED..."
-	@TMP_DIR=$$(mktemp -d); \
-	unzip -q "$(APK)" "lib/$(QT_ARCH)/*.so" -d "$$TMP_DIR" 2>/dev/null || true; \
-	OUT_FILE="$(BUILD_DIR)/deps-apk.txt"; \
-	mkdir -p "$(BUILD_DIR)"; \
-	echo "Dependências NEEDED das libs dentro do APK:" > "$$OUT_FILE"; \
-	for lib in $$TMP_DIR/lib/$(QT_ARCH)/*.so; do \
-		[ ! -f "$$lib" ] && continue; \
-		echo "" >> "$$OUT_FILE"; \
-		echo "=== $$(basename $$lib) ===" >> "$$OUT_FILE"; \
-		$(READELF) -d "$$lib" 2>/dev/null | grep NEEDED | awk '{print $$5}' | tr -d "[]" | sort -u >> "$$OUT_FILE"; \
-	done; \
-	rm -rf "$$TMP_DIR"; \
-	echo "📄 Dependências do APK salvas em $$OUT_FILE"; \
-	cat "$$OUT_FILE"
 
 # ---------- Verifica dependências faltantes no APK ----------
 .PHONY: verify-missing
@@ -295,7 +291,7 @@ clean:
 	rm -rf "$(BUILD_DIR)"
 	@echo "[OK] Limpo."
 
-# ---------- info: Mostra as variáveis de ambiente configuradas + APK ----------
+## info: Mostra as variáveis de ambiente configuradas + APK
 info:
 	@echo "=========================================="
 	@echo "  VARIÁVEIS DE AMBIENTE / BUILD"
@@ -393,17 +389,17 @@ run: install
 	adb shell am start -n "$(PACKAGE)/$(ACTIVITYNAME)"
 	@echo "[OK] App iniciado."
 
-# ---------- log2: Mostra apenas logs de erro, JNI, crashes e sinais do app ----------
+# ---------- log2: Mostra apenas logs de erro, JNI, crashes e sinais do app
 log2:
 	@echo "🔍 Logs de erro de $(PACKAGE):"
 	adb logcat *:E DEBUG:* | grep -E "Fatal|JNI|SIG|$(PACKAGE)"
 
-# ---------- abi: Mostra a ABI (arquitetura) do device conectado ----------
+# ---------- abi: Mostra a ABI (arquitetura) do device conectado
 abi:
 	@echo "🏗️  ABI do device:"
 	@adb shell getprop ro.product.cpu.abi
 
-# ---------- sdk: Mostra a versão do SDK do device conectado ----------
+# ---------- sdk: Mostra a versão do SDK do device conectado
 sdk:
 	@echo "📱 SDK do device:"
 	@adb shell getprop ro.build.version.sdk
