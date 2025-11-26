@@ -562,3 +562,99 @@ make log2
 na próxima rodada, que a gente faz o ajuste fino (nomes exatos / pasta / etc.), mas com esse `copy-deps` você já deve ver uma boa diferença.
 
 
+
+Show, isso vai ajudar **muito** a enxergar o que está acontecendo dentro do wx.
+Vou te passar a “linha de montagem” do que fazer assim que esse build terminar.
+
+---
+
+## 1. Conferir se as novas libs têm símbolos
+
+Depois que o `cmake --build . --target install` terminar, dá uma olhada em uma das libs, por exemplo:
+
+```bash
+cd /home/ivan/wx/android-wx-3.2.4/arm64-v8a/usr/lib
+
+# ver se aparecem símbolos legíveis
+nm libwx_baseu-3.2-Android_arm64-v8a.so | head
+
+# ou:
+readelf -Ws libwx_baseu-3.2-Android_arm64-v8a.so | head
+```
+
+Se vier um monte de `wxAlgo`, `wxLog`, `wxMutex` etc. (e não só símbolos do tipo `__bss_start`, `_init`), está ótimo.
+
+Se ainda parecer muito “pelado”, vale forçar isso no CMake:
+
+```cmake
+-DCMAKE_BUILD_TYPE=Debug \
+-DCMAKE_C_FLAGS="-g -O0" \
+-DCMAKE_CXX_FLAGS="-g -O0" \
+-DCMAKE_STRIP="" \
+```
+
+---
+
+## 2. Gerar o APK de novo com as libs de debug
+
+No projeto do app:
+
+```bash
+cd /workspace/obs/kiko-nova-abordagem  # ajuste pro teu path real
+
+make clean
+make apk       # (já é alias de apk-readelf)
+make verify-apk
+```
+
+Confere se o APK ainda contém as libs wx no lugar certo:
+
+```bash
+make verify-apk | egrep 'libwx_(baseu|qtu_core)'
+```
+
+---
+
+## 3. Deixar o app cair de novo e pegar os PCs
+
+Roda:
+
+```bash
+make run
+make log2
+```
+
+Anota de novo o `pc` do frame #01 ou #02 em `libwx_baseu-3.2-Android_arm64-v8a.so`
+(pode ser o mesmo `0x318f48` ou outro valor).
+
+---
+
+## 4. Rodar o `addr2line` de verdade
+
+No diretório das libs wx:
+
+```bash
+cd /home/ivan/wx/android-wx-3.2.4/arm64-v8a/usr/lib
+
+PC=0x318f48   # substitui pelo pc que aparecer no tombstone
+
+/home/ivan/Android/Sdk/ndk/android-ndk-r21e/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-addr2line \
+    -f -C -e libwx_baseu-3.2-Android_arm64-v8a.so $PC
+```
+
+Se os símbolos estiverem ok, agora deve sair algo tipo:
+
+```txt
+wxAlgumaCoisa
+/path/to/src/common/xxxx.cpp:linha
+```
+
+Aí a gente passa de “tá morrendo em wxLog/mutex em geral” para
+“tá morrendo *exatamente aqui* nesse arquivo/linha do wx”, e dá pra:
+
+* saber se é um assert / abort explícito;
+* ou se é um bug de inicialização estática;
+* ou ainda alguma incompatibilidade de runtime.
+
+Quando tiver o `arquivo:linha` do `addr2line`, manda que eu te ajudo a interpretar o trecho específico do wx.
+
