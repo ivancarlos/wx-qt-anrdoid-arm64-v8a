@@ -7,6 +7,9 @@ QT       += core gui widgets opengl svg testlib
 TARGET   = gsoc2014
 TEMPLATE = app
 
+# <<< ADICIONE AQUI >>>
+ANDROID_ABIS = arm64-v8a
+
 SOURCES += dialogs.cpp
 HEADERS += dialogs.h
 
