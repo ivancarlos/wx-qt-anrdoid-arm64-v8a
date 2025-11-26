@@ -100,43 +100,40 @@ build: configure
 
 # ---------- Gera e instala o APK com androiddeployqt ----------
 apk: build
-	@echo "==> Preparando biblioteca para androiddeployqt..."
-	@mkdir -p "$(ANDROID_LIB_DIR)"
-	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
-	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
+	@echo "QT_VERSION       = $(QT_VERSION)"
+	@echo "QT_ANDROID_DIR   = $(QT_ANDROID_DIR)"
+	@echo "QMAKE            = $(QMAKE)"
+	@echo "ANDROIDDEPLOYQT  = $(ANDROIDDEPLOYQT)"
+	@echo "QT_ARCH          = $(QT_ARCH)"
+	@echo "WX_ANDROID_ROOT  = $(WX_ANDROID_ROOT)"
+	@echo "ANDROID_SDK_ROOT = $(ANDROID_SDK_ROOT)"
+	@echo "ANDROID_NDK_ROOT = $(ANDROID_NDK_ROOT)"
 
-	@echo "==> Descobrindo dependências nativas com ndk-depends..."
-	@mkdir -p "$(BUILD_DIR)/android/libs/$(QT_ARCH)" "$(BUILD_DIR)/android/assets"
-	@cd "$(BUILD_DIR)" && \
-		"$(NDKDEPENDS)" \
-			-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
-			-L "$(QT_ANDROID_DIR)/lib" \
-			-L "$(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android/" \
-			"./android/libs/$(QT_ARCH)/$(LIB_NAME)" \
-		> deps-$(QT_ARCH).txt || true
-
-	@echo "   Dependências encontradas:"
-	@cd "$(BUILD_DIR)" && cat "deps-$(QT_ARCH).txt" 2>/dev/null || true
-
-	@echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."
-	@cd "$(BUILD_DIR)" && \
-	for dep in $$(cat "deps-$(QT_ARCH).txt"); do \
+	@echo "==> Preparando biblioteca para androiddeployqt..."; \
+	mkdir -p "$(ANDROID_LIB_DIR)"; \
+	cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"; \
+	echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"; \
+	echo "==> Descobrindo dependências nativas com ndk-depends..."; \
+	NATIVE_DEPS=`"$(ANDROID_NDK_ROOT)/ndk-depends" \
+		-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
+		-L "$(QT_ANDROID_DIR)/lib" \
+		"$(ANDROID_LIB_DIR)/$(LIB_NAME)" | awk '{print $$1}' | sort -u`; \
+	echo "   Dependências encontradas:"; \
+	echo "$$NATIVE_DEPS"; \
+	echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."; \
+	for dep in $$NATIVE_DEPS; do \
 		echo "  -> $$dep"; \
-		# pula libs de sistema, que o Android já fornece
-		case "$$dep" in \
-			libz.so|libm.so|liblog.so|libdl.so|libc.so|libGLESv2.so) \
-				echo "     (usando lib do sistema, não copiando)"; \
-				continue;; \
-		esac; \
 		lib_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/$$dep"; \
 		bin_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/bin/$$dep"; \
 		qt_path="$(QT_ANDROID_DIR)/lib/$$dep"; \
-		ndk_cpp_path="$(NDK_CPP_LIBDIR)/$$dep"; \
-		[ -f "$$lib_path" ]     && cp -v "$$lib_path"     "./android/libs/$(QT_ARCH)/"; \
-		[ -f "$$bin_path" ]     && cp -v "$$bin_path"     "./android/libs/$(QT_ARCH)/"; \
-		[ -f "$$qt_path" ]      && cp -v "$$qt_path"      "./android/libs/$(QT_ARCH)/"; \
-		[ -f "$$ndk_cpp_path" ] && cp -v "$$ndk_cpp_path" "./android/libs/$(QT_ARCH)/"; \
-	done || true
+		sysroot_cpp="$(NDK_CPP_SYSROOT_DIR)/$$dep"; \
+		stl_cpp="$(NDK_CPP_STL_DIR)/$$dep"; \
+		[ -f "$$lib_path" ]    && cp -v "$$lib_path"    "$(ANDROID_LIB_DIR)/"; \
+		[ -f "$$bin_path" ]    && cp -v "$$bin_path"    "$(ANDROID_LIB_DIR)/"; \
+		[ -f "$$qt_path" ]     && cp -v "$$qt_path"     "$(ANDROID_LIB_DIR)/"; \
+		[ -f "$$sysroot_cpp" ] && cp -v "$$sysroot_cpp" "$(ANDROID_LIB_DIR)/"; \
+		[ -f "$$stl_cpp" ]     && cp -v "$$stl_cpp"     "$(ANDROID_LIB_DIR)/"; \
+	done
 
 	@echo "==> Executando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
@@ -146,6 +143,7 @@ apk: build
 			--android-platform "$(ANDROID_NDK_PLATFORM)" \
 			--install
 	@echo "[OK] APK gerado/instalado."
+
 # apk: build
 # 	@echo "==> Preparando biblioteca para androiddeployqt..."
 # 	@mkdir -p "$(ANDROID_LIB_DIR)"
