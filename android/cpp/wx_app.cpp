@@ -1,28 +1,23 @@
-#include <wx/wx.h>
+#include "wx_app.h"
 
-class MyApp : public wxApp
+bool MyApp::OnInit()
 {
-public:
-    bool OnInit() override
-    {
-        // Aqui a janela do Android já existe!
-        wxFrame* f = new wxFrame(nullptr, wxID_ANY,
-                                 "wxWidgets rodando em Android (Qt backend)",
-                                 wxDefaultPosition, wxSize(400, 300));
+    wxFrame* f = new wxFrame(nullptr, wxID_ANY,
+                             "wxWidgets rodando em Android (Qt backend)",
+                             wxDefaultPosition, wxSize(400, 300));
 
-        new wxButton(f, wxID_ANY, "Clique aqui",
-                     wxPoint(20,20), wxSize(200,80));
+    new wxButton(f, wxID_ANY, "Clique aqui",
+                 wxPoint(20,20), wxSize(200,80));
 
-        f->Show();
+    f->Show();
+    return true;
+}
 
-        return true;
-    }
+int MyApp::OnExit()
+{
+    return wxApp::OnExit();
+}
 
-    int OnExit() override
-    {
-        return wxApp::OnExit();
-    }
-};
-
+// IMPORTANTE
 wxIMPLEMENT_APP_NO_MAIN(MyApp);
 
