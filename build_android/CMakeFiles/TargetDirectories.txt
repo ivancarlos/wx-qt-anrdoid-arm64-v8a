@@ -1,0 +1,3 @@
+/workspace/obs/kiko/build_android/CMakeFiles/wxapp.dir
+/workspace/obs/kiko/build_android/CMakeFiles/edit_cache.dir
+/workspace/obs/kiko/build_android/CMakeFiles/rebuild_cache.dir
