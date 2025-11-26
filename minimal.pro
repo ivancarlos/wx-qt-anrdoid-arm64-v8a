@@ -57,8 +57,6 @@ android {
     message("WX_LIB_DIR = $$WX_LIB_DIR")
 
     # Linka explicitamente só as libs que existem (arm64-v8a)
-	# quem adicionar aqui será copiada para o sitema
-	# NOTE: 📰    > quem adicionar aqui será copiada para o sitema
 	LIBS += \
         $${WX_LIB_DIR}/libwx_qtu_core-3.2-Android_$${QT_ARCH}.so \
         $${WX_LIB_DIR}/libwx_baseu-3.2-Android_$${QT_ARCH}.so
