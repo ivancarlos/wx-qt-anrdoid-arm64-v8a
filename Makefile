@@ -191,7 +191,7 @@ kill:
 
 
 # ---------- Limpa dados do app ----------
-clear-data:
+data-clear:
 	@if [ -z "$(PACKAGE)" ]; then \
 		echo "[ERRO] PACKAGE não encontrado."; \
 		exit 1; \
