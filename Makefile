@@ -2,21 +2,21 @@
 # Makefile para compilar wxapp com CMake+NDK e empacotar com Qt
 # usando análise de dependências via readelf
 # ============================================================
+APP_NAME   := wxapp
+LIB_NAME   := libwxapp.so    # importante ser esse!
+QT_VERSION := 5.15.2
+QT_ARCH    := arm64-v8a
 
-APP_NAME        := wxapp
-QT_VERSION      := 5.15.2
-
-QT_ANDROID_DIR  := $(HOME)/.config/env/qt/$(QT_VERSION)/android
-QMAKE           := $(QT_ANDROID_DIR)/bin/qmake
-ANDROIDDEPLOYQT := $(QT_ANDROID_DIR)/bin/androiddeployqt
+QT_ANDROID_DIR     := $(HOME)/.config/env/qt/$(QT_VERSION)/android
+QMAKE              := $(QT_ANDROID_DIR)/bin/qmake
+ANDROIDDEPLOYQT    := $(QT_ANDROID_DIR)/bin/androiddeployqt
 
 NDK_VERSION        := android-ndk-r21e
 CONF_ANDROID_LEVEL := 28
-QT_ARCH            := arm64-v8a
 CONF_COMPILER_ARCH := aarch64
 
-PROJECT_ROOT := $(CURDIR)
-BUILD_DIR    := $(PROJECT_ROOT)/build_android
+PROJECT_ROOT       := $(CURDIR)
+BUILD_DIR          := $(PROJECT_ROOT)/build_android
 
 # JSON que o qmake gera e o androiddeployqt consome
 DEPLOY_JSON  := android-$(APP_NAME)-deployment-settings.json
@@ -115,19 +115,11 @@ find-deps-readelf:
 # Copia todas as libs da lista para android/libs/$(QT_ARCH)
 copy-deps:
 	@if [ ! -f "$(BUILD_DIR)/all-deps.txt" ]; then \
-		echo "❌ Rode 'make find-deps-readelf' primeiro!"; \
-		exit 1; \
-	fi
+		echo "❌ Rode make find-deps-readelf primeiro!"; exit 1; fi
 	@echo "📦 Copiando dependências para $(ANDROID_LIB_DIR)..."
 	@mkdir -p "$(ANDROID_LIB_DIR)"
-
 	@while read dep; do \
 		[ -z "$$dep" ] && continue; \
-		if [ "$$dep" = "$(LIB_NAME)" ]; then \
-			echo "  → $$dep (principal)"; \
-			cp -v "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/lib$(APP_NAME)_$(QT_ARCH).so"; \
-			continue; \
-		fi; \
 		COPIED=0; \
 		for P in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
 			if [ -f "$$P/$$dep" ]; then \
@@ -140,8 +132,14 @@ copy-deps:
 		[ $$COPIED -eq 0 ] && echo "  ⚠️ $$dep não encontrado em WX/Qt/NDK"; \
 	done < "$(BUILD_DIR)/all-deps.txt"
 
-	@echo "📦 Forçando cópia de libc++_shared.so"
-	@cp -v "$(NDK_CPP_STL_DIR)/libc++_shared.so" "$(ANDROID_LIB_DIR)/" || true
+	@echo "  → libwxapp.so (principal)"
+	cp -v "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/lib$(APP_NAME)_$(QT_ARCH).so"
+
+	@echo "  → libc++_shared.so (forçado)"
+	cp -v "$(NDK_CPP_STL_DIR)/libc++_shared.so" "$(ANDROID_LIB_DIR)/libc++_shared.so"
+
+	@echo "  → libwxapp_arm64-v8a.so na raiz do build (para androiddeployqt)"
+	cp -v "$(BUILD_DIR)/$(LIB_NAME)" "$(BUILD_DIR)/lib$(APP_NAME)_$(QT_ARCH).so"
 
 # ============================================================
 # 4) Gera APK com androiddeployqt usando as libs copiadas
