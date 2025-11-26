@@ -1,78 +1,93 @@
-#-------------------------------------------------
-# Projeto gsoc2014 - wxWidgets + Qt (Android)
-#-------------------------------------------------
+# ============================================
+# wxWidgets + Qt + Android (arm64-v8a)
+# Gera libwxapp_arm64-v8a.so para androiddeployqt
+# ============================================
 
-QT       += core gui widgets opengl svg testlib
-
+QT       += core gui widgets androidextras
+TEMPLATE = lib
 TARGET   = wxapp
-TEMPLATE = app
 
-# <<< ADICIONE AQUI >>>
-ANDROID_ABIS = arm64-v8a
-
-#SOURCES += test.cpp
-#SOURCES += dialogs.cpp
-#HEADERS += dialogs.h
-
-CONFIG  += mobility
-MOBILITY =
+CONFIG  += c++17 warn_on exceptions
 
 DEFINES += __WXQT__
 
-# Para logcat no Android
-LIBS += -llog
+# ===== ABI usada no Android =====
+ANDROID_ABIS = arm64-v8a
 
-# Raiz padrão da instalação wxWidgets Android (3.2.4) para arm64-v8a
-# Estrutura:
-#   ~/wx/android-wx-3.2.4/
-#       arm64-v8a/usr/bin/wx-config
-#       arm64-v8a/usr/lib/...
+# ===== Ajusta para seu Makefile =====
+QT_ARCH = $$QT_ARCH
+isEmpty(QT_ARCH) {
+    QT_ARCH = arm64-v8a
+}
+
+# ===== wxWidgets sysroot raiz =====
 isEmpty(WX_ANDROID_ROOT) {
     WX_ANDROID_ROOT = $$HOME/wx/android-wx-3.2.4
 }
-
 message("WX_ANDROID_ROOT = $$WX_ANDROID_ROOT")
 message("QT_ARCH = $$QT_ARCH")
 
-android {
-    message("Compilando para Android (NDK)")
+# ============================================
+# Build Desktop (Linux) — wxWidgets nativo
+# ============================================
+!android {
+    message("== Build Desktop (Linux) ==")
 
-    ANDROID_ARCH = $$QT_ARCH          # deve ser "arm64-v8a"
+    WX_CONFIG = wx-config
+    WX_CFLAGS = $$system("$${WX_CONFIG} --cflags")
+    WX_LIBS   = $$system("$${WX_CONFIG} --libs std,qt")
+
+    QMAKE_CXXFLAGS += $$WX_CFLAGS
+    LIBS += $$WX_LIBS
+}
+
+# ============================================
+# Build Android (NDK)
+# ============================================
+android {
+    message("== Build Android / NDK ==")
+
+    ANDROID_ARCH = $$QT_ARCH
     SYSROOT      = $${WX_ANDROID_ROOT}/$${ANDROID_ARCH}/usr
 
     message("SYSROOT = $$SYSROOT")
 
-    # wx-config específico desse sysroot Android
+    # wx-config dentro do sysroot Android
     WX_CONFIG = "$${SYSROOT}/bin/wx-config"
-    message("Usando WX_CONFIG = $$WX_CONFIG")
-
-    # Pegamos APENAS os CFLAGS do wx (includes/defines)
     WX_CFLAGS = $$system("$${WX_CONFIG} --cflags")
+
+    message("WX_CONFIG = $$WX_CONFIG")
     message("WX_CFLAGS = $$WX_CFLAGS")
 
+    # Inclui includes do wxWidgets
+    INCLUDEPATH += $$SYSROOT/include
     QMAKE_CXXFLAGS += $$WX_CFLAGS
 
-    # Diretório das libs wx
+    # Diretório das libs wxWidgets
     WX_LIB_DIR = $${SYSROOT}/lib
     message("WX_LIB_DIR = $$WX_LIB_DIR")
 
-    # Linka explicitamente só as libs que existem (arm64-v8a)
+    # Link explícito das libs principais wx (igual seu projeto antigo)
     LIBS += \
         $${WX_LIB_DIR}/libwx_qtu_core-3.2-Android_$${QT_ARCH}.so \
         $${WX_LIB_DIR}/libwx_baseu-3.2-Android_$${QT_ARCH}.so
 
-} else {
-    message("Compilando fora do Android (desktop)")
-
-    WX_CONFIG = wx-config
-
-    WX_CFLAGS = $$system("$${WX_CONFIG} --cflags")
-    WX_LIBS   = $$system("$${WX_CONFIG} --libs std,qt")
-
-    message("WX_CFLAGS (desktop) = $$WX_CFLAGS")
-    message("WX_LIBS   (desktop) = $$WX_LIBS")
-
-    QMAKE_CXXFLAGS += $$WX_CFLAGS
-    LIBS           += $$WX_LIBS
+    # Bibliotecas padrão Android
+    LIBS += -llog -lz -lc++_shared
 }
+
+# ============================================
+# Fontes do projeto
+# ============================================
+
+SOURCES += \
+    dialogs.cpp
+
+HEADERS += \
+    dialogs.h
+
+# ============================================
+# Android packaging
+# ============================================
+ANDROID_PACKAGE_SOURCE_DIR = android
 
