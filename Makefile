@@ -6,7 +6,7 @@
 # ============================================================
 
 # ---------- Configurações gerais ----------
-APP_NAME        := gsoc2014
+APP_NAME        := wxapp
 
 QT_VERSION      ?= 5.15.2
 QT_ANDROID_DIR  := $(HOME)/.config/env/qt/$(QT_VERSION)/android
@@ -18,12 +18,14 @@ CONF_ANDROID_LEVEL  ?= 28
 QT_ARCH             ?= arm64-v8a
 WX_ANDROID_ROOT     ?= $(HOME)/wx/android-wx-3.2.4
 
-# Arquivo de deployment gerado pelo qmake (nome padrão que você usou)
 DEPLOY_JSON    := android-$(APP_NAME)-deployment-settings.json
 
-# Diretórios
 PROJECT_ROOT   := $(CURDIR)
 BUILD_DIR      := $(PROJECT_ROOT)/build
+
+# Nome da lib gerada pelo build
+LIB_NAME       := lib$(APP_NAME)_$(QT_ARCH).so
+ANDROID_LIB_DIR:= $(BUILD_DIR)/android/libs/$(QT_ARCH)
 
 # ---------- Ambiente Android (exportado para qmake/make) ----------
 export ANDROID_SDK_ROOT      := $(HOME)/Android/Sdk
@@ -65,6 +67,10 @@ build: configure
 
 # ---------- Gera e instala o APK com androiddeployqt ----------
 apk: build
+	@echo "==> Preparando biblioteca para androiddeployqt..."
+	@mkdir -p "$(ANDROID_LIB_DIR)"
+	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
+	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
 	@echo "==> Executando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
