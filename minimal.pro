@@ -11,8 +11,8 @@ TEMPLATE = app
 ANDROID_ABIS = arm64-v8a
 
 #SOURCES += test.cpp
-#SOURCES += dialogs.cpp
-#HEADERS += dialogs.h
+SOURCES += dialogs.cpp
+HEADERS += dialogs.h
 
 CONFIG  += mobility
 MOBILITY =
