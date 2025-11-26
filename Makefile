@@ -46,9 +46,11 @@ GRADLE          := ./gradlew --warning-mode all
 AAPT            := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
 NDKDEPENDS      := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
 
-# Diretório onde fica a libc++_shared.so no NDK r21e (arm64, API 28)
-NDK_CPP_LIBDIR    := $(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android/$(CONF_ANDROID_LEVEL)
-                              ./sources/cxx-stl/llvm-libc++/libs/arm64-v8a/libc++_shared.so
+# libc++_shared.so no sysroot do toolchain
+NDK_CPP_SYSROOT_DIR := $(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android
+
+# libc++_shared.so no diretório llvm-libc++
+NDK_CPP_STL_DIR     := $(ANDROID_NDK_ROOT)/sources/cxx-stl/llvm-libc++/libs/$(QT_ARCH)
 
 # Caminhos dos APKs gerados
 apk_debug       := build/android/build/outputs/apk/debug/android-debug.apk
