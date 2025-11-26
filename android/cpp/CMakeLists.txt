@@ -1,18 +1,44 @@
-cmake_minimum_required(VERSION 3.10)
-project(wxapp LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.18)
+project(wxapp LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_library(LOG_LIB log)
+# Raiz wxWidgets Android arm64-v8a
+set(WX_ROOT "${WX_ANDROID_ROOT}/${ANDROID_ABI}/usr")
+set(WX_CONFIG "${WX_ROOT}/bin/wx-config")
 
-# Caminho para seu prefixo wxWidgets Android
-set(WX_ROOT "$ENV{HOME}/wx/android-wx-3.2.4/arm64-v8a/usr")
+# Obter flags do wxWidgets
+execute_process(
+    COMMAND ${WX_CONFIG} --cflags
+    OUTPUT_VARIABLE WX_CFLAGS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
-include_directories(${WX_ROOT}/include)
+execute_process(
+    COMMAND ${WX_CONFIG} --libs
+    OUTPUT_VARIABLE WX_LIBS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
-link_directories(${WX_ROOT}/lib)
+# Biblioteca compartilhada
+add_library(wxapp SHARED
+    wx_app.cpp
+    wx_jni.cpp
+)
 
-add_library(wxapp SHARED wx_jni.cpp wx_app.cpp)
+# Definições e flags
+target_compile_definitions(wxapp PRIVATE __WXQT__)
+separate_arguments(WX_CFLAGS_LIST UNIX_COMMAND "${WX_CFLAGS}")
+target_compile_options(wxapp PRIVATE ${WX_CFLAGS_LIST})
 
-target_link_libraries(wxapp ${LOG_LIB} wx_baseu-3.2 wx_qtu_core-3.2 c++_shared)
+# Link wxWidgets e log
+separate_arguments(WX_LIBS_LIST UNIX_COMMAND "${WX_LIBS}")
+target_link_libraries(wxapp PRIVATE
+    ${WX_LIBS_LIST}
+    log
+)
+
+# # Link wxWidgets e log
+# target_link_libraries(
+#   wxapp PRIVATE ${WX_ROOT}/lib/libwx_qtu_core-3.2-Android_arm64-v8a.so
+#                 ${WX_ROOT}/lib/libwx_baseu-3.2-Android_arm64-v8a.so log)
