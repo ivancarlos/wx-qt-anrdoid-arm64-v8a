@@ -15,9 +15,9 @@ QT_ARCH            := arm64-v8a
 CONF_COMPILER_ARCH := aarch64
 
 
-PROJECT_ROOT := $(CURDIR)
-BUILD_DIR    := $(PROJECT_ROOT)/build_android
-DEPLOY_JSON  := android-$(APP_NAME)-deployment-settings.json
+PROJECT_ROOT     := $(CURDIR)
+BUILD_DIR        := $(PROJECT_ROOT)/build_android
+DEPLOY_JSON_NAME := android-$(APP_NAME)-deployment-settings.json
 
 export ANDROID_SDK_ROOT       := $(HOME)/Android/Sdk
 export ANDROID_NDK_ROOT       := $(ANDROID_SDK_ROOT)/ndk/$(NDK_VERSION)
@@ -51,7 +51,7 @@ jni-build:
 # 2) Gera Makefile Qt + deployment JSON
 # ===================================
 configure:
-	$(QMAKE) -makefile minimal.pro
+	cd $(BUILD_DIR) && $(QMAKE) -makefile ../minimal.pro
 
 # ===================================
 # 3) Gera APK com androiddeployqt
