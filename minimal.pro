@@ -4,7 +4,7 @@
 
 QT       += core gui widgets opengl svg testlib
 
-TARGET   = gsoc2014
+TARGET   = wxapp
 TEMPLATE = app
 
 # <<< ADICIONE AQUI >>>
