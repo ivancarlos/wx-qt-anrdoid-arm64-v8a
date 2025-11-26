@@ -8,6 +8,7 @@
 # ---------- Configurações gerais ----------
 APP_NAME        := wxapp
 
+
 QT_VERSION      ?= 5.15.2
 QT_ANDROID_DIR  := $(HOME)/.config/env/qt/$(QT_VERSION)/android
 QMAKE           := $(QT_ANDROID_DIR)/bin/qmake
@@ -52,6 +53,7 @@ NDK_CPP_SYSROOT_DIR := $(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_
 
 # libc++_shared.so no diretório llvm-libc++
 NDK_CPP_STL_DIR     := $(ANDROID_NDK_ROOT)/sources/cxx-stl/llvm-libc++/libs/$(QT_ARCH)
+TOOLCHAIN_LIB_TOOLS := $(ANDROID_NDK_ROOT)/platforms/$(ANDROID_NDK_PLATFORM)/arch-arm64
 
 # Caminhos dos APKs gerados
 apk_debug       := build/android/build/outputs/apk/debug/android-debug.apk
@@ -116,7 +118,7 @@ find-deps-readelf:
 		echo "$$CHECKED" | grep -qw "$$LIB" && continue; \
 		CHECKED="$$CHECKED $$LIB"; \
 		FOUND=0; \
-		for P in "$(BUILD_DIR)" "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+		for P in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)" "$(BUILD_DIR)"; do \
 			if [ -f "$$P/$$LIB" ]; then \
 				echo "  📦 $$LIB em $$P"; \
 				DEPS=$$("$(READELF)" -d "$$P/$$LIB" 2>/dev/null | grep NEEDED | awk '{print $$5}' | tr -d '[]'); \
@@ -134,6 +136,7 @@ find-deps-readelf:
 # ---------- Copia dependências encontradas para android/libs ----------
 .PHONY: copy-deps
 copy-deps:
+	@echo " 🟩($@)🟩🟩🟩🟩🟩🟩🟩🟩🟩"
 	@if [ ! -f "$(BUILD_DIR)/all-deps.txt" ]; then \
 		echo "❌ Erro: execute 'make find-deps-readelf' primeiro!"; \
 		exit 1; \
@@ -143,9 +146,10 @@ copy-deps:
 	@while read dep; do \
 		[ -z "$$dep" ] && continue; \
 		COPIED=0; \
-		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)" "$(BUILD_DIR)"; do \
 			if [ -f "$$search_path/$$dep" ]; then \
 				echo "  ✅ $$dep <- $$search_path"; \
+				echo cp -v "$$search_path/$$dep" "$(ANDROID_LIB_DIR)/"; \
 				cp -v "$$search_path/$$dep" "$(ANDROID_LIB_DIR)/" || true; \
 				COPIED=1; \
 				break; \
@@ -154,18 +158,9 @@ copy-deps:
 		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado: $$dep"; \
 	done < "$(BUILD_DIR)/all-deps.txt"
 
-# ---------- Gera APK com androiddeployqt (usando readelf) ----------
-apk-readelf: build find-deps-readelf copy-deps
-	@echo "==> Executando androiddeployqt..."
-	cd "$(BUILD_DIR)" && \
-		"$(ANDROIDDEPLOYQT)" \
-			--input "$(DEPLOY_JSON)" \
-			--output android \
-			--android-platform "$(ANDROID_NDK_PLATFORM)"
-	@echo "[OK] APK gerado com dependências completas (readelf)."
-
-# ---------- Gera APK original (mantido para compatibilidade) ----------
-apk: apk-readelf
+.PHONY: copy-deps-check
+copy-deps-check:
+	@echo " 🟨($@)🟨🟨🟨🟨🟨🟨🟨🟨🟨"
 	@echo "📱 Copiando bibliotecas para APK..."
 	@copy_with_check() { \
 		src="$$1"; \
@@ -192,7 +187,26 @@ apk: apk-readelf
 	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
 	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
 	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libz.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libc.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libdl.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libGLESv2.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/liblog.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libm.so" "$(BUILD_DIR)/android/libs/arm64-v8a"
+
+# ---------- Gera APK com androiddeployqt (usando readelf) ----------
+apk-readelf: build find-deps-readelf copy-deps copy-deps-check
+	@echo "==> Executando androiddeployqt..."
+	cd "$(BUILD_DIR)" && \
+		"$(ANDROIDDEPLOYQT)" \
+			--input "$(DEPLOY_JSON)" \
+			--output android \
+			--android-platform "$(ANDROID_NDK_PLATFORM)"
+	@echo "[OK] APK gerado com dependências completas (readelf)."
+
+# ---------- Gera APK original (mantido para compatibilidade) ----------
+apk: apk-readelf
 
 # ---------- Verifica libs dentro do APK gerado ----------
 .PHONY: verify-apk
