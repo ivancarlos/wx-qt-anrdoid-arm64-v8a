@@ -1,21 +1,23 @@
 #include <jni.h>
 #include <wx/wx.h>
 #include <wx/app.h>
-#include <wx/frame.h>
+#include "wx_app.h"
 
 extern "C" JNIEXPORT void JNICALL
 Java_org_qtproject_example_wxapp_WxBridge_initWx(JNIEnv*, jclass)
 {
-    static bool started = false;
-    if (started)
+    static bool initialized = false;
+    if (initialized)
         return;
 
-    started = true;
+    initialized = true;
 
-    // Inicializa runtime wx (sem main loop)
-    wxEntryStart(0, nullptr);
+    wxApp::SetInstance(new MyApp());
 
-    // Inicia app
-    wxTheApp->CallOnInit();
+    int argc = 1;
+    char appName[] = "wxapp";
+    char* argv[] = { appName, nullptr };
+
+    wxEntry(argc, argv);
 }
 
