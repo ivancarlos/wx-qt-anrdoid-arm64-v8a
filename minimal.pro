@@ -18,12 +18,14 @@ DEFINES += __WXQT__
 # Para logcat no Android
 LIBS += -llog
 
-# Raiz da instalação wxWidgets Android (3.2.4) para arm64-v8a
+# Raiz padrão da instalação wxWidgets Android (3.2.4) para arm64-v8a
 # Estrutura:
-#   /home/ivan/wx/android-wx-3.2.4/
+#   ~/wx/android-wx-3.2.4/
 #       arm64-v8a/usr/bin/wx-config
 #       arm64-v8a/usr/lib/...
-WX_ANDROID_ROOT = /home/ivan/wx/android-wx-3.2.4
+isEmpty(WX_ANDROID_ROOT) {
+    WX_ANDROID_ROOT = $$HOME/wx/android-wx-3.2.4
+}
 
 message("WX_ANDROID_ROOT = $$WX_ANDROID_ROOT")
 message("QT_ARCH = $$QT_ARCH")
@@ -31,7 +33,6 @@ message("QT_ARCH = $$QT_ARCH")
 android {
     message("Compilando para Android (NDK)")
 
-    # Ex.: /home/ivan/wx/arm64-v8a-wx-3.2.4/arm64-v8a/usr
     ANDROID_ARCH = $$QT_ARCH          # deve ser "arm64-v8a"
     SYSROOT      = $${WX_ANDROID_ROOT}/$${ANDROID_ARCH}/usr
 
@@ -70,3 +71,4 @@ android {
     QMAKE_CXXFLAGS += $$WX_CFLAGS
     LIBS           += $$WX_LIBS
 }
+
