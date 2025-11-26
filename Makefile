@@ -57,10 +57,11 @@ configure:
 # 3) Gera APK com androiddeployqt
 # ===================================
 apk: jni-build configure
-	$(ANDROIDDEPLOYQT) \
-		--input $(DEPLOY_JSON) \
-		--output android \
-		--android-platform android-$(CONF_ANDROID_LEVEL)
+	cd $(BUILD_DIR) && \
+		$(ANDROIDDEPLOYQT) \
+			--input $(DEPLOY_JSON_NAME) \
+			--output android \
+			--android-platform android-$(CONF_ANDROID_LEVEL)
 
 # ===================================
 # Utilidades
