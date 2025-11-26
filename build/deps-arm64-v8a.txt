@@ -1,0 +1,16 @@
+libwxapp_arm64-v8a.so
+libwx_qtu_core-3.2-Android_arm64-v8a.so
+libwx_baseu-3.2-Android_arm64-v8a.so
+libQt5Test_arm64-v8a.so
+libQt5Svg_arm64-v8a.so
+libQt5OpenGL_arm64-v8a.so
+libQt5Widgets_arm64-v8a.so
+libQt5Gui_arm64-v8a.so
+libQt5Core_arm64-v8a.so
+libz.so
+libm.so
+liblog.so
+libdl.so
+libc.so
+libc++_shared.so
+libGLESv2.so
