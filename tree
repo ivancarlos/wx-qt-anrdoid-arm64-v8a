@@ -1,0 +1,10 @@
+android/
+ ├─ java/org/qtproject/example/wxapp/
+ │     ├─ MainActivity.java     ← inicia Qt e depois chama initWx()
+ │     └─ WxBridge.java         ← ponte JNI
+ ├─ cpp/
+ │     ├─ wx_app.cpp            ← wxApp real
+ │     ├─ wx_jni.cpp            ← wrapper JNI
+ │     └─ CMakeLists.txt        ← compila biblioteca libwxapp
+ └─ res/
+
