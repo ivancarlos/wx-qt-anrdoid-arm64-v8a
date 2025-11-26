@@ -33,9 +33,17 @@ export ANDROID_NDK_PLATFORM  := android-$(CONF_ANDROID_LEVEL)
 
 VERSION ?= 36.1.0
 
-AAPT            := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
-NDKDEPENDS      := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
-READELF         := $(ANDROID_TOOLCHAIN_PATH)/bin/llvm-readelf
+# Ferramentas auxiliares
+AAPT       := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
+NDKDEPENDS := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
+CMAKE_BIN  := $(ANDROID_SDK_ROOT)/cmake/3.22.1/bin/cmake
+# CMAKE_BIN  := /home/ivan/.pyenv/shims/cmake
+READELF    := $(ANDROID_TOOLCHAIN_PATH)/bin/llvm-readelf
+
+# ----------- VERBOSE -------------------
+
+VERBOSE          ?= -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+                    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # ============================================================
 # Caminhos wxWidgets
@@ -64,46 +72,10 @@ APK             := $(apk_debug)
 PACKAGE         := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/package: name='([^']+).*/\1/p")
 ACTIVITYNAME    := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/launchable-activity: name='([^']+).*/\1/p")
 
-# ============================================================
-# JNI / wxWidgets entry libwxapp.so
-# ============================================================
-JNI_SRC := \
-    android/cpp/wx_jni.cpp \
-    android/cpp/myapp_wx.cpp
 
-JNI_INCLUDES := \
-    -I$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/include \
-    -I$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib \
-    -I$(ANDROID_NDK_ROOT)/sources/android/native_app_glue \
-    -I$(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/include
-
-JNI_LDFLAGS := \
-    -L$(WX_LIB_DIR) \
-    -lwx_qtu_core-3.2-Android_$(QT_ARCH) \
-    -lwx_baseu-3.2-Android_$(QT_ARCH) \
-    -landroid -llog
-
-# ============================================================
-# TARGETS PRINCIPAIS
-# ============================================================
-
-.PHONY: all build configure apk jni-build env info clean
+.PHONY: configure apk env build
 
 all: apk
-
-# ------------------------------------------------------------
-# Compila a lib JNI (libwxapp.so)
-# ------------------------------------------------------------
-jni-build:
-	@echo "==> Compilando libwxapp.so (JNI + wxWidgets)..."
-	mkdir -p "$(BUILD_DIR)"
-	$(ANDROID_TOOLCHAIN_PATH)/bin/$(CONF_COMPILER_ARCH)-linux-android$(CONF_ANDROID_LEVEL)-clang++ \
-		-shared -fPIC \
-		-o "$(BUILD_DIR)/$(LIB_NAME)" \
-		$(JNI_SRC) \
-		$(JNI_INCLUDES) \
-		$(JNI_LDFLAGS)
-	@echo "[OK] libwxapp.so gerada."
 
 # ------------------------------------------------------------
 # Gera Makefile via qmake
@@ -125,11 +97,11 @@ build: configure
 	cd "$(BUILD_DIR)" && $(MAKE)
 	@echo "[OK] Build Qt concluído."
 
+
 # ============================================================
 # DEPENDÊNCIAS — recursivas via readelf
 # ============================================================
-
-.PHONY: find-deps-readelf copy-deps deps-main
+.PHONY: find-deps-readelf copy-deps
 
 find-deps-readelf:
 	@echo "🔍 Lendo dependências com readelf..."
@@ -185,7 +157,9 @@ copy-deps:
 # APK
 # ============================================================
 
-apk-readelf: jni-build build find-deps-readelf copy-deps
+.PHONY: apk apk-readelf build find-deps-readelf
+
+apk-readelf: build find-deps-readelf copy-deps
 	@echo "==> Rodando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
@@ -195,6 +169,24 @@ apk-readelf: jni-build build find-deps-readelf copy-deps
 	@echo "[OK] APK gerado."
 
 apk: apk-readelf
+
+# ============================================================
+# 1) Build JNI .so com CMake + NDK
+# ============================================================
+.PHONY: jni-build
+jni-build:
+	rm -rf "$(BUILD_DIR)"
+	mkdir -p "$(BUILD_DIR)"
+	cd "$(BUILD_DIR)" && \
+		"$(CMAKE_BIN)" \
+		    $(VERBOSE) \
+			-DANDROID_ABI="$(QT_ARCH)" \
+			-DANDROID_PLATFORM="$(CONF_ANDROID_LEVEL)" \
+			-DANDROID_NDK="$(ANDROID_NDK_ROOT)" \
+			-DCMAKE_TOOLCHAIN_FILE="$(ANDROID_NDK_ROOT)/build/cmake/android.toolchain.cmake" \
+			-DWX_ANDROID_ROOT="$(WX_ANDROID_ROOT)" \
+			"$(PROJECT_ROOT)/android/cpp"
+	cd "$(BUILD_DIR)" && "$(CMAKE_BIN)" --build .
 
 # ============================================================
 # UTILITÁRIOS
