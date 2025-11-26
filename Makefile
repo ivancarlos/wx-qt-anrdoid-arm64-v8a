@@ -45,24 +45,7 @@ GRADLE          := ./gradlew --warning-mode all
 # Ferramenta AAPT para extrair informações do APK
 AAPT            := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
 NDKDEPENDS      := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
-# Bibliotecas wx extras que precisam ir pro APK
-EXTRA_WX_LIBS   := \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_xml-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_adv-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_aui-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_html-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_media-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_propgrid-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_qa-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so \
-  $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so
-
-
+READELF         := $(ANDROID_TOOLCHAIN_PATH)/bin/llvm-readelf
 
 # libc++_shared.so no sysroot do toolchain
 NDK_CPP_SYSROOT_DIR := $(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android
@@ -85,7 +68,7 @@ ACTIVITYNAME    := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/d
 PACKAGE         := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/package: name='([^']+).*/\1/p")
 
 # ---------- Targets padrão ----------
-.PHONY: all build configure apk clean env info
+.PHONY: all build configure apk apk-readelf clean env info
 
 all: build
 
@@ -116,155 +99,143 @@ build: configure
 	cd "$(BUILD_DIR)" && $(MAKE)
 	mkdir -p $(BUILD_DIR)/android/libs/arm64-v8a
 	cp -v $(BUILD_DIR)/libwxapp_arm64-v8a.so $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_xml-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_adv-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_aui-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_html-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_media-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_propgrid-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_qa-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so  $(BUILD_DIR)/android/libs/arm64-v8a
-	cp -v $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so $(BUILD_DIR)/android/libs/arm64-v8a
-
-
-
-
 	@echo "[OK] Build concluído."
 
-# ---------- Gera e instala o APK com androiddeployqt ----------
-apk: build
-	@echo "QT_VERSION       = $(QT_VERSION)"
-	@echo "QT_ANDROID_DIR   = $(QT_ANDROID_DIR)"
-	@echo "QMAKE            = $(QMAKE)"
-	@echo "ANDROIDDEPLOYQT  = $(ANDROIDDEPLOYQT)"
-	@echo "QT_ARCH          = $(QT_ARCH)"
-	@echo "WX_ANDROID_ROOT  = $(WX_ANDROID_ROOT)"
-	@echo "ANDROID_SDK_ROOT = $(ANDROID_SDK_ROOT)"
-	@echo "ANDROID_NDK_ROOT = $(ANDROID_NDK_ROOT)"
-	@echo "EXTRA_WX_LIBS    = $(EXTRA_WX_LIBS)"
 
+# ---------- Helper: encontra dependências recursivamente com readelf ----------
+.PHONY: find-deps-readelf
+find-deps-readelf:
+	@echo "🔍 Lendo dependências com readelf..."; \
+	ALL_LIBS="$(LIB_NAME)"; \
+	CHECKED=""; \
+	while [ -n "$$ALL_LIBS" ]; do \
+		set -- $$ALL_LIBS; \
+		LIB="$$1"; \
+		shift; \
+		ALL_LIBS="$$*"; \
+		echo "$$CHECKED" | grep -qw "$$LIB" && continue; \
+		CHECKED="$$CHECKED $$LIB"; \
+		FOUND=0; \
+		for P in "$(BUILD_DIR)" "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+			if [ -f "$$P/$$LIB" ]; then \
+				echo "  📦 $$LIB em $$P"; \
+				DEPS=$$("$(READELF)" -d "$$P/$$LIB" 2>/dev/null | grep NEEDED | awk '{print $$5}' | tr -d '[]'); \
+				ALL_LIBS="$$ALL_LIBS $$DEPS"; \
+				FOUND=1; \
+				break; \
+			fi; \
+		done; \
+		[ $$FOUND -eq 0 ] && echo "  ⚠️ $$LIB não encontrado em nenhum diretório conhecido"; \
+	done; \
+	echo "$$CHECKED" | tr ' ' '\n' | grep -v '^$$' | sort -u > "$(BUILD_DIR)/all-deps.txt"; \
+	echo ""; \
+	echo "📄 Lista final de dependências em $(BUILD_DIR)/all-deps.txt"
+
+# ---------- Copia dependências encontradas para android/libs ----------
+.PHONY: copy-deps
+copy-deps:
+	@if [ ! -f "$(BUILD_DIR)/all-deps.txt" ]; then \
+		echo "❌ Erro: execute 'make find-deps-readelf' primeiro!"; \
+		exit 1; \
+	fi
+	@echo "📦 Copiando dependências para $(ANDROID_LIB_DIR)..."
+	@mkdir -p "$(ANDROID_LIB_DIR)"
+	@while read dep; do \
+		[ -z "$$dep" ] && continue; \
+		COPIED=0; \
+		for search_path in "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+			if [ -f "$$search_path/$$dep" ]; then \
+				echo "  ✅ $$dep <- $$search_path"; \
+				cp -v "$$search_path/$$dep" "$(ANDROID_LIB_DIR)/" || true; \
+				COPIED=1; \
+				break; \
+			fi; \
+		done; \
+		[ $$COPIED -eq 0 ] && echo "  ⚠️  Não encontrado: $$dep"; \
+	done < "$(BUILD_DIR)/all-deps.txt"
+
+# ---------- Gera APK com androiddeployqt (usando readelf) ----------
+apk-readelf: build find-deps-readelf copy-deps
 	@echo "==> Executando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
 			--input "$(DEPLOY_JSON)" \
 			--output android \
-			--android-platform "$(ANDROID_NDK_PLATFORM)" \
-			--extra-libs "$(EXTRA_WX_LIBS)"
-	@echo "[OK] APK gerado/instalado."
-			# --install
-#apk: build
-#	@echo "QT_VERSION       = $(QT_VERSION)"
-#	@echo "QT_ANDROID_DIR   = $(QT_ANDROID_DIR)"
-#	@echo "QMAKE            = $(QMAKE)"
-#	@echo "ANDROIDDEPLOYQT  = $(ANDROIDDEPLOYQT)"
-#	@echo "QT_ARCH          = $(QT_ARCH)"
-#	@echo "WX_ANDROID_ROOT  = $(WX_ANDROID_ROOT)"
-#	@echo "ANDROID_SDK_ROOT = $(ANDROID_SDK_ROOT)"
-#	@echo "ANDROID_NDK_ROOT = $(ANDROID_NDK_ROOT)"
-#
-#	@echo "==> Preparando biblioteca para androiddeployqt..."; \
-#	mkdir -p "$(ANDROID_LIB_DIR)"; \
-#	cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"; \
-#	echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"; \
-#	echo "==> Descobrindo dependências nativas com ndk-depends..."; \
-#	NATIVE_DEPS=`"$(ANDROID_NDK_ROOT)/ndk-depends" \
-#		-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
-#		-L "$(QT_ANDROID_DIR)/lib" \
-#		"$(ANDROID_LIB_DIR)/$(LIB_NAME)" | awk '{print $$1}' | sort -u`; \
-#	echo "   Dependências encontradas:"; \
-#	echo "$$NATIVE_DEPS"; \
-#	echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."; \
-#	for dep in $$NATIVE_DEPS; do \
-#		echo "  -> $$dep"; \
-#		lib_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/$$dep"; \
-#		bin_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/bin/$$dep"; \
-#		qt_path="$(QT_ANDROID_DIR)/lib/$$dep"; \
-#		sysroot_cpp="$(NDK_CPP_SYSROOT_DIR)/$$dep"; \
-#		stl_cpp="$(NDK_CPP_STL_DIR)/$$dep"; \
-#		[ -f "$$lib_path" ]    && cp -v "$$lib_path"    "$(ANDROID_LIB_DIR)/"; \
-#		[ -f "$$bin_path" ]    && cp -v "$$bin_path"    "$(ANDROID_LIB_DIR)/"; \
-#		[ -f "$$qt_path" ]     && cp -v "$$qt_path"     "$(ANDROID_LIB_DIR)/"; \
-#		[ -f "$$sysroot_cpp" ] && cp -v "$$sysroot_cpp" "$(ANDROID_LIB_DIR)/"; \
-#		[ -f "$$stl_cpp" ]     && cp -v "$$stl_cpp"     "$(ANDROID_LIB_DIR)/"; \
-#	done
-#
-#	@echo "==> Executando androiddeployqt..."
-#	cd "$(BUILD_DIR)" && \
-#		"$(ANDROIDDEPLOYQT)" \
-#			--input "$(DEPLOY_JSON)" \
-#			--output android \
-#			--android-platform "$(ANDROID_NDK_PLATFORM)"
-#	@echo "[OK] APK gerado/instalado."
-#			# --install
+			--android-platform "$(ANDROID_NDK_PLATFORM)"
+	@echo "[OK] APK gerado com dependências completas (readelf)."
 
-# apk: build
-# 	@echo "==> Preparando biblioteca para androiddeployqt..."
-# 	@mkdir -p "$(ANDROID_LIB_DIR)"
-# 	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
-# 	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
+# ---------- Gera APK original (mantido para compatibilidade) ----------
+apk: apk-readelf
+	@echo "📱 Copiando bibliotecas para APK..."
+	@copy_with_check() { \
+		src="$$1"; \
+		dest="$$2"; \
+		filename=$$(basename "$$src"); \
+		if [ -f "$$dest/$$filename" ]; then \
+			echo "⚠️  $$filename já existe em $$dest"; \
+		else \
+			cp -v "$$src" "$$dest"; \
+			echo "✅ $$filename copiado para $$dest"; \
+		fi; \
+	}; \
+	#copy_with_check "$(BUILD_DIR)/libwxapp_arm64-v8a.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_xml-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_adv-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_aui-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_html-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_media-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_propgrid-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_qa-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"
 
-# 	@echo "==> Descobrindo dependências nativas com ndk-depends..."
-# 	@mkdir -p "$(BUILD_DIR)/android/libs/$(QT_ARCH)" "$(BUILD_DIR)/android/assets"
-# 	@cd "$(BUILD_DIR)" && \
-# 		"$(NDKDEPENDS)" \
-# 			-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
-# 			-L "$(QT_ANDROID_DIR)/lib" \
-# 			-L "$(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android/" \
-# 			"./android/libs/$(QT_ARCH)/$(LIB_NAME)" \
-# 		> deps-$(QT_ARCH).txt
+# ---------- Verifica libs dentro do APK gerado ----------
+.PHONY: verify-apk
+verify-apk:
+	@if [ ! -f "$(APK)" ]; then \
+		echo "❌ APK não encontrado: $(APK)"; \
+		echo "   Execute 'make apk' ou 'make apk-readelf' primeiro."; \
+		exit 1; \
+	fi
+	@echo "🔍 Bibliotecas dentro do APK:"
+	@unzip -l "$(APK)" | grep "lib/$(QT_ARCH)/" | grep "\.so$$" | awk '{print $$4}' | sort
+	@echo ""
+	@echo "📊 Total de libs:"
+	@unzip -l "$(APK)" | grep "lib/$(QT_ARCH)/" | grep "\.so$$" | wc -l
 
-# 	@echo "   Dependências encontradas:"
-# 	@cat "$(BUILD_DIR)/deps-$(QT_ARCH).txt" || true
-
-# 	@echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."
-# 	@cd "$(BUILD_DIR)" && \
-# 	for dep in $$(cat deps-$(QT_ARCH).txt); do \
-# 		echo "  -> $$dep"; \
-# 		lib_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/$$dep"; \
-# 		bin_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/bin/$$dep"; \
-# 		qt_path="$(QT_ANDROID_DIR)/lib/$$dep"; \
-# 		[ -f "$$lib_path" ] && cp -v "$$lib_path" "./android/libs/$(QT_ARCH)/"; \
-# 		[ -f "$$bin_path" ] && cp -v "$$bin_path" "./android/libs/$(QT_ARCH)/"; \
-# 		[ -f "$$qt_path" ] && cp -v "$$qt_path" "./android/libs/$(QT_ARCH)/"; \
-# 	done
-
-# 	@echo "==> Executando androiddeployqt..."
-# 	cd "$(BUILD_DIR)" && \
-# 		"$(ANDROIDDEPLOYQT)" \
-# 			--input "$(DEPLOY_JSON)" \
-# 			--output android \
-# 			--android-platform "$(ANDROID_NDK_PLATFORM)" \
-# 			--install
-# 	@echo "[OK] APK gerado/instalado."
-# apk: build
-# 	@echo "==> Preparando biblioteca para androiddeployqt..."
-# 	@mkdir -p "$(ANDROID_LIB_DIR)"
-
-# 	# Copia a lib principal do app
-# 	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
-# 	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
-
-# 	# Copia as bibliotecas do wxWidgets necessárias
-# 	@echo "==> Copiando bibliotecas wxWidgets para o APK..."
-# 	@cp "$(WX_LIB_DIR)"/libwx_qtu_*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
-# 	@cp "$(WX_LIB_DIR)"/libwx_baseu*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
-
-# 	@echo "   Conteúdo de $(ANDROID_LIB_DIR):"
-# 	@ls -1 "$(ANDROID_LIB_DIR)"
-
-# 	@echo "==> Executando androiddeployqt..."
-# 	cd "$(BUILD_DIR)" && \
-# 		"$(ANDROIDDEPLOYQT)" \
-# 			--input "$(DEPLOY_JSON)" \
-# 			--output android \
-# 			--android-platform "$(ANDROID_NDK_PLATFORM)" \
-# 			--install
-# 	@echo "[OK] APK gerado/instalado."
+# ---------- Verifica dependências faltantes no APK ----------
+.PHONY: verify-missing
+verify-missing:
+	@if [ ! -f "$(APK)" ]; then \
+		echo "❌ APK não encontrado: $(APK)"; \
+		exit 1; \
+	fi
+	@echo "⚠️  Verificando dependências faltantes..."
+	@TMP_DIR=$$(mktemp -d); \
+	unzip -q "$(APK)" "lib/$(QT_ARCH)/*.so" -d "$$TMP_DIR" 2>/dev/null || true; \
+	MISSING=0; \
+	for lib in $$TMP_DIR/lib/$(QT_ARCH)/*.so; do \
+		[ ! -f "$$lib" ] && continue; \
+		DEPS=$$($(READELF) -d "$$lib" 2>/dev/null | grep NEEDED | awk '{print $$5}' | tr -d '[]'); \
+		for dep in $$DEPS; do \
+			if [ ! -f "$$TMP_DIR/lib/$(QT_ARCH)/$$dep" ]; then \
+				echo "  ❌ $$(basename $$lib) precisa de: $$dep"; \
+				MISSING=$$((MISSING + 1)); \
+			fi; \
+		done; \
+	done; \
+	rm -rf "$$TMP_DIR"; \
+	if [ $$MISSING -eq 0 ]; then \
+		echo "✅ Nenhuma dependência faltando!"; \
+	else \
+		echo ""; \
+		echo "⚠️  Total de dependências faltantes: $$MISSING"; \
+	fi
 
 # ---------- Limpeza ----------
 clean:
@@ -290,6 +261,7 @@ info:
 	@echo "  ANDROID_NDK_PLATFORM = $(ANDROID_NDK_PLATFORM)"
 	@echo "  BUILD_TOOLS_VER  = $(VERSION)"
 	@echo "  AAPT             = $(AAPT)"
+	@echo "  READELF          = $(READELF)"
 	@echo ""
 	@echo "🔧 Build:"
 	@echo "  PROJECT_ROOT     = $(PROJECT_ROOT)"
@@ -339,9 +311,8 @@ kill:
 	adb shell am force-stop "$(PACKAGE)"
 	@echo "[OK] App parado."
 
-
 # ---------- Limpa dados do app ----------
-data-clear:
+delete-data:
 	@if [ -z "$(PACKAGE)" ]; then \
 		echo "[ERRO] PACKAGE não encontrado."; \
 		exit 1; \
@@ -349,7 +320,6 @@ data-clear:
 	@echo "==> Limpando dados do app $(PACKAGE)..."
 	adb shell pm clear "$(PACKAGE)"
 	@echo "[OK] Dados limpos."
-
 
 # ---------- Logcat filtrado pelo pacote ----------
 logcat:
@@ -359,7 +329,6 @@ logcat:
 	fi
 	@echo "==> Logcat filtrado pelo pacote $(PACKAGE)..."
 	adb logcat | grep --line-buffered "$(PACKAGE)"
-
 
 # ---------- Instala e inicia o app ----------
 run: install
