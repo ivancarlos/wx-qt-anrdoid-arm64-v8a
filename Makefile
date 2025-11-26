@@ -13,11 +13,12 @@ QT_ANDROID_DIR  := $(HOME)/.config/env/qt/$(QT_VERSION)/android
 QMAKE           := $(QT_ANDROID_DIR)/bin/qmake
 ANDROIDDEPLOYQT := $(QT_ANDROID_DIR)/bin/androiddeployqt
 
-NDK_VERSION         ?= android-ndk-r21e
-CONF_ANDROID_LEVEL  ?= 28
-QT_ARCH             ?= arm64-v8a
-WX_ANDROID_ROOT     ?= $(HOME)/wx/android-wx-3.2.4
-WX_LIB_DIR          := $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib
+NDK_VERSION        ?= android-ndk-r21e
+CONF_ANDROID_LEVEL ?= 28
+QT_ARCH            ?= arm64-v8a
+CONF_COMPILER_ARCH := aarch64    # para arm64-v8a
+WX_ANDROID_ROOT    ?= $(HOME)/wx/android-wx-3.2.4
+WX_LIB_DIR         := $(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib
 
 # Arquivo de deployment gerado pelo qmake
 DEPLOY_JSON    := android-$(APP_NAME)-deployment-settings.json
@@ -43,6 +44,7 @@ GRADLE          := ./gradlew --warning-mode all
 
 # Ferramenta AAPT para extrair informações do APK
 AAPT            := $(ANDROID_SDK_ROOT)/build-tools/$(VERSION)/aapt
+NDKDEPENDS      := $(ANDROID_NDK_ROOT)/build/tools/ndk-depends
 
 # Caminhos dos APKs gerados
 apk_debug       := build/android/build/outputs/apk/debug/android-debug.apk
@@ -94,27 +96,66 @@ build: configure
 apk: build
 	@echo "==> Preparando biblioteca para androiddeployqt..."
 	@mkdir -p "$(ANDROID_LIB_DIR)"
-
-	# Copia a lib principal do app
 	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
 	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
 
-	# Copia as bibliotecas do wxWidgets necessárias
-	@echo "==> Copiando bibliotecas wxWidgets para o APK..."
-	@cp "$(WX_LIB_DIR)"/libwx_qtu_*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
-	@cp "$(WX_LIB_DIR)"/libwx_baseu*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
+	@echo "==> Descobrindo dependências nativas com ndk-depends..."
+	@mkdir -p "$(BUILD_DIR)/android/libs/$(QT_ARCH)" "$(BUILD_DIR)/android/assets"
+	@cd "$(BUILD_DIR)" && \
+		"$(NDKDEPENDS)" \
+			-L "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib" \
+			-L "$(QT_ANDROID_DIR)/lib" \
+			-L "$(ANDROID_TOOLCHAIN_PATH)/sysroot/usr/lib$(CONF_COMPILER_ARCH)-linux-android/" \
+			"./android/libs/$(QT_ARCH)/$(LIB_NAME)" \
+		> deps-$(QT_ARCH).txt
 
-	@echo "   Conteúdo de $(ANDROID_LIB_DIR):"
-	@ls -1 "$(ANDROID_LIB_DIR)"
+	@echo "   Dependências encontradas:"
+	@cat "$(BUILD_DIR)/deps-$(QT_ARCH).txt" || true
+
+	@echo "==> Copiando dependências para android/libs/$(QT_ARCH)..."
+	@cd "$(BUILD_DIR)" && \
+	for dep in $$(cat deps-$(QT_ARCH).txt); do \
+		echo "  -> $$dep"; \
+		lib_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/$$dep"; \
+		bin_path="$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/bin/$$dep"; \
+		qt_path="$(QT_ANDROID_DIR)/lib/$$dep"; \
+		[ -f "$$lib_path" ] && cp -v "$$lib_path" "./android/libs/$(QT_ARCH)/"; \
+		[ -f "$$bin_path" ] && cp -v "$$bin_path" "./android/libs/$(QT_ARCH)/"; \
+		[ -f "$$qt_path" ] && cp -v "$$qt_path" "./android/libs/$(QT_ARCH)/"; \
+	done
 
 	@echo "==> Executando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
 			--input "$(DEPLOY_JSON)" \
 			--output android \
-			--android-platform "$(ANDROID_NDK_PLATFORM)" \
-			--install
+			--android-platform "$(ANDROID_NDK_PLATFORM)"
 	@echo "[OK] APK gerado/instalado."
+			# --install
+# apk: build
+# 	@echo "==> Preparando biblioteca para androiddeployqt..."
+# 	@mkdir -p "$(ANDROID_LIB_DIR)"
+
+# 	# Copia a lib principal do app
+# 	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
+# 	@echo "   Copiado $(LIB_NAME) -> $(ANDROID_LIB_DIR)/"
+
+# 	# Copia as bibliotecas do wxWidgets necessárias
+# 	@echo "==> Copiando bibliotecas wxWidgets para o APK..."
+# 	@cp "$(WX_LIB_DIR)"/libwx_qtu_*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
+# 	@cp "$(WX_LIB_DIR)"/libwx_baseu*-3.2-Android_$(QT_ARCH).so "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
+
+# 	@echo "   Conteúdo de $(ANDROID_LIB_DIR):"
+# 	@ls -1 "$(ANDROID_LIB_DIR)"
+
+# 	@echo "==> Executando androiddeployqt..."
+# 	cd "$(BUILD_DIR)" && \
+# 		"$(ANDROIDDEPLOYQT)" \
+# 			--input "$(DEPLOY_JSON)" \
+# 			--output android \
+# 			--android-platform "$(ANDROID_NDK_PLATFORM)" \
+# 			--install
+# 	@echo "[OK] APK gerado/instalado."
 
 # ---------- Limpeza ----------
 clean:
