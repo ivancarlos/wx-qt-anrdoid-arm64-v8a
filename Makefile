@@ -92,7 +92,7 @@ configure: env
 # ------------------------------------------------------------
 # Compila projeto Qt + wxWidgets
 # ------------------------------------------------------------
-build: configure
+build: jni-build configure
 	@echo "==> Compilando projeto Qt..."
 	cd "$(BUILD_DIR)" && $(MAKE)
 	@echo "[OK] Build Qt concluído."
@@ -104,29 +104,31 @@ build: configure
 .PHONY: find-deps-readelf copy-deps
 
 find-deps-readelf:
-	@echo "🔍 Lendo dependências com readelf..."
-	@mkdir -p "$(ANDROID_LIB_DIR)"
-	@cp "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/" 2>/dev/null || true
-	@ALL_LIBS="$(LIB_NAME)"; \
+	@echo "🔍 Lendo dependências com readelf..."; \
+	ALL_LIBS="$(LIB_NAME)"; \
 	CHECKED=""; \
 	while [ -n "$$ALL_LIBS" ]; do \
-		LIB=$$(echo "$$ALL_LIBS" | awk '{print $$1}'); \
-		ALL_LIBS=$$(echo "$$ALL_LIBS" | sed "s/^$$LIB *//"); \
+		set -- $$ALL_LIBS; \
+		LIB="$$1"; \
+		shift; \
+		ALL_LIBS="$$*"; \
 		echo "$$CHECKED" | grep -qw "$$LIB" && continue; \
 		CHECKED="$$CHECKED $$LIB"; \
 		FOUND=0; \
-		for P in "$(ANDROID_LIB_DIR)" "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
+		for P in "$(BUILD_DIR)" "$(WX_LIB_DIR)" "$(QT_ANDROID_DIR)/lib" "$(NDK_CPP_STL_DIR)" "$(NDK_CPP_SYSROOT_DIR)"; do \
 			if [ -f "$$P/$$LIB" ]; then \
 				echo "  📦 $$LIB em $$P"; \
-				DEPS=$$($(READELF) -d "$$P/$$LIB" | grep NEEDED | awk '{print $$5}' | tr -d '[]'); \
+				DEPS=$$("$(READELF)" -d "$$P/$$LIB" 2>/dev/null | grep NEEDED | awk '{print $$5}' | tr -d '[]'); \
 				ALL_LIBS="$$ALL_LIBS $$DEPS"; \
 				FOUND=1; \
 				break; \
 			fi; \
 		done; \
-		[ $$FOUND -eq 0 ] && echo "  ⚠️ $$LIB não encontrado em nenhum diretório"; \
+		[ $$FOUND -eq 0 ] && echo "  ⚠️ $$LIB não encontrado em nenhum diretório conhecido"; \
 	done; \
-	echo "$$CHECKED" | tr ' ' '\n' | grep -v '^$$' | sort -u > "$(BUILD_DIR)/all-deps.txt"
+	echo "$$CHECKED" | tr ' ' '\n' | grep -v '^$$' | sort -u > "$(BUILD_DIR)/all-deps.txt"; \
+	echo ""; \
+	echo "📄 Lista final de dependências em $(BUILD_DIR)/all-deps.txt"
 
 # ------------------------------------------------------------
 # Copia todas dependências reais
@@ -153,13 +155,49 @@ copy-deps:
 	@echo "📦 Copiando libc++_shared.so"
 	cp -v "$(NDK_CPP_STL_DIR)/libc++_shared.so" "$(ANDROID_LIB_DIR)/"
 
+.PHONY: copy-deps-check
+copy-deps-check:
+	@echo " 🟨($@)🟨🟨🟨🟨🟨🟨🟨🟨🟨"
+	@echo "📱 Copiando bibliotecas para APK..."
+	@copy_with_check() { \
+		src="$$1"; \
+		dest="$$2"; \
+		filename=$$(basename "$$src"); \
+		if [ -f "$$dest/$$filename" ]; then \
+			echo "⚠️  $$filename já existe em $$dest"; \
+		else \
+			cp -v "$$src" "$$dest"; \
+			echo "✅ $$filename copiado para $$dest"; \
+		fi; \
+	}; \
+	#copy_with_check "$(BUILD_DIR)/libwxapp_arm64-v8a.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_xml-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_adv-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_aui-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_html-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_media-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_propgrid-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_qa-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libz.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libc.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libdl.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libGLESv2.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/liblog.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libm.so" "$(BUILD_DIR)/android/libs/arm64-v8a"
 # ============================================================
 # APK
 # ============================================================
 
 .PHONY: apk apk-readelf build find-deps-readelf
 
-apk-readelf: build find-deps-readelf copy-deps
+apk-readelf: build find-deps-readelf copy-deps copy-deps-check
 	@echo "==> Rodando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
