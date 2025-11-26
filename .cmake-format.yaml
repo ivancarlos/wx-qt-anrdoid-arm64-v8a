@@ -1,0 +1,269 @@
+# Configuração do cmake-format em YAML
+# https://cmake-format.readthedocs.io/
+
+# ============================================
+# Opções Gerais de Formatação
+# ============================================
+
+# Largura máxima de linha
+line_width: 80
+
+# Tamanho da tabulação (espaços)
+tab_size: 2
+
+# Usar espaços ao invés de tabs
+use_tabchars: false
+
+# Máximo de linhas em branco consecutivas
+max_blank_lines: 2
+
+# Largura máxima para comentários
+comment_line_width: 80
+
+# ============================================
+# Formatação de Comandos
+# ============================================
+
+# Parênteses pendentes
+dangle_parens: true
+
+# Alinhamento do parêntese de fechamento
+dangle_align: prefix
+
+# Separar nome do comando com espaço
+separate_ctrl_name_with_space: false
+separate_fn_name_with_space: false
+
+# Algoritmo de empacotamento
+# Opções: hpack, vpack, nested
+algorithm_order:
+  - hpack
+  - nested
+
+# ============================================
+# Comentários e Markup
+# ============================================
+
+# Habilita reformatação de comentários
+enable_markup: true
+
+# Padrão de cerca de comentários
+fence_pattern: '^\\s*([#=]+[#=]+)\\s*$'
+
+# Padrão de régua de comentários
+ruler_pattern: '^\\s*[#=]{3}.*[#=]{3}\\s*$'
+
+# Comprimento mínimo de réguas de hash
+hashruler_min_length: 10
+
+# Canonicaliza réguas de hash
+canonicalize_hashrulers: true
+
+# ============================================
+# Encoding
+# ============================================
+
+input_encoding: utf-8
+output_encoding: utf-8
+
+# ============================================
+# Comandos Personalizados
+# ============================================
+
+additional_commands:
+  # ExternalProject
+  ExternalProject_Add:
+    kwargs:
+      GIT_REPOSITORY: '*'
+      GIT_TAG: '*'
+      GIT_SHALLOW: '*'
+      GIT_PROGRESS: '*'
+      PREFIX: '*'
+      INSTALL_DIR: '*'
+      CMAKE_ARGS: '*'
+      BUILD_COMMAND: '*'
+      INSTALL_COMMAND: '*'
+      LOG_DOWNLOAD: '*'
+      LOG_CONFIGURE: '*'
+      LOG_BUILD: '*'
+      LOG_INSTALL: '*'
+
+  # FetchContent
+  FetchContent_Declare:
+    kwargs:
+      GIT_REPOSITORY: '*'
+      GIT_TAG: '*'
+      GIT_SHALLOW: '*'
+      GIT_PROGRESS: '*'
+      URL: '*'
+      URL_HASH: '*'
+      DOWNLOAD_EXTRACT_TIMESTAMP: '*'
+
+  # Configurações de target
+  target_compile_options:
+    kwargs:
+      PRIVATE: '*'
+      PUBLIC: '*'
+      INTERFACE: '*'
+
+  target_compile_definitions:
+    kwargs:
+      PRIVATE: '*'
+      PUBLIC: '*'
+      INTERFACE: '*'
+
+  target_include_directories:
+    kwargs:
+      PRIVATE: '*'
+      PUBLIC: '*'
+      INTERFACE: '*'
+      SYSTEM: '*'
+
+  target_link_libraries:
+    kwargs:
+      PRIVATE: '*'
+      PUBLIC: '*'
+      INTERFACE: '*'
+
+# ============================================
+# Configuração por Comando
+# ============================================
+
+per_command:
+  # Comandos básicos
+  set:
+    flags: []
+    kwargs: {}
+
+  option:
+    flags: []
+    kwargs: {}
+
+  # Executáveis e bibliotecas
+  add_executable:
+    flags: []
+    kwargs: {}
+
+  add_library:
+    flags:
+      - STATIC
+      - SHARED
+      - MODULE
+      - IMPORTED
+      - INTERFACE
+    kwargs: {}
+
+  # find_package
+  find_package:
+    flags:
+      - REQUIRED
+      - QUIET
+      - NO_MODULE
+      - CONFIG
+    kwargs:
+      COMPONENTS: '*'
+      OPTIONAL_COMPONENTS: '*'
+      PATHS: '*'
+
+  # install
+  install:
+    flags: []
+    kwargs:
+      TARGETS: '*'
+      DESTINATION: '*'
+      RUNTIME: '*'
+      LIBRARY: '*'
+      ARCHIVE: '*'
+      INCLUDES: '*'
+
+  # execute_process
+  execute_process:
+    kwargs:
+      COMMAND: '*'
+      WORKING_DIRECTORY: '*'
+      RESULT_VARIABLE: '*'
+      OUTPUT_VARIABLE: '*'
+      ERROR_VARIABLE: '*'
+      OUTPUT_STRIP_TRAILING_WHITESPACE: '*'
+
+  # file
+  file:
+    flags:
+      - GLOB
+      - GLOB_RECURSE
+      - READ
+      - WRITE
+      - MAKE_DIRECTORY
+    kwargs: {}
+
+  # configure_file
+  configure_file:
+    flags:
+      - COPYONLY
+      - ESCAPE_QUOTES
+      - @ONLY
+    kwargs: {}
+
+  # message
+  message:
+    flags:
+      - STATUS
+      - WARNING
+      - AUTHOR_WARNING
+      - FATAL_ERROR
+      - SEND_ERROR
+    kwargs: {}
+
+# ============================================
+# Opções de Parsing
+# ============================================
+
+# Habilita sorting automático
+autosort: false
+
+# Habilita quebra automática
+enable_autowrap: true
+
+# Máximo de subgrupos para hpack
+max_subgroups_hwrap: 2
+
+# Prefixo mínimo/máximo
+min_prefix_chars: 4
+max_prefix_chars: 10
+
+# ============================================
+# Estilo
+# ============================================
+
+# Case dos keywords: lower, upper, unchanged
+keyword_case: unchanged
+
+# Validação de layout
+require_valid_layout: false
+
+# ============================================
+# Comandos Especiais
+# ============================================
+
+# Comandos que devem sempre ser quebrados
+force_command_wrap: []
+
+# Comandos que devem sempre estar em uma linha
+always_wrap: []
+
+# ============================================
+# Markup em Comentários
+# ============================================
+
+# Padrão de cerca de código
+code_fence_pattern: '^\\s*([`~]{3}[`~]*)(.*)$'
+
+# Padrão de comentários literais (não formatar)
+literal_comment_pattern: null
+
+# ============================================
+# Opções Avançadas
+# ============================================
+
+emit_byteorder_mark: false
+
