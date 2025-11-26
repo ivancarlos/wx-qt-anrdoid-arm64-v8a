@@ -393,8 +393,12 @@ run: install
 	adb shell am start -n "$(PACKAGE)/$(ACTIVITYNAME)"
 	@echo "[OK] App iniciado."
 
-# ---------- log2: Mostra apenas logs de erro, JNI, crashes e sinais do app ----------
+# ---------- log2: menos agressivo, crashes e sinais do app ----------
 log2:
+	@echo "🔍 Logs de erro de $(PACKAGE):"
+	adb logcat | grep --line-buffered -E "wx|org.qtproject.example.wxapp|AndroidRuntime"
+# ---------- log2: Mostra apenas logs de erro, JNI, crashes e sinais do app ----------
+log3:
 	@echo "🔍 Logs de erro de $(PACKAGE):"
 	adb logcat *:E DEBUG:* | grep -E "Fatal|JNI|SIG|$(PACKAGE)"
 
