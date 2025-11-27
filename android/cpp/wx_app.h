@@ -1,12 +1,14 @@
-#pragma once
-#include <wx/wx.h>
+#ifndef WX_APP_H
+#define WX_APP_H
+
+#include <wx/app.h>
 
 class MyApp : public wxApp
 {
 public:
-    bool OnInit() override;
-    int OnExit() override;
+    virtual bool OnInit() override;
+    virtual int OnExit() override;
 };
 
-wxDECLARE_APP(MyApp);
+#endif // WX_APP_H
 
