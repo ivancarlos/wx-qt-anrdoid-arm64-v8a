@@ -58,15 +58,18 @@ NDK_CPP_STL_DIR     := $(ANDROID_NDK_ROOT)/sources/cxx-stl/llvm-libc++/libs/$(QT
 # Diretórios do projeto
 # ============================================================
 PROJECT_ROOT   := $(CURDIR)
-BUILD_DIR      := $(PROJECT_ROOT)/build
+BUILD_DIR      := $(PROJECT_ROOT)/build_android
 ANDROID_LIB_DIR:= $(BUILD_DIR)/android/libs/$(QT_ARCH)
 DEPLOY_JSON    := android-$(APP_NAME)-deployment-settings.json
+# Nome alinhado com lib gerada pelo Qt: libwxapp_arm64-v8a.so
+#DEPLOY_JSON    := android-lib$(APP_NAME)_arm64-v8a.so-deployment-settings.json
+# ou seja: android-libwxapp_arm64-v8a.so-deployment-settings.json
 
 # ============================================================
 # APKs
 # ============================================================
-apk_debug       := build/android/build/outputs/apk/debug/android-debug.apk
-apk_release     := build/android/build/outputs/apk/release/android-release.apk
+apk_debug       := $(BUILD_DIR)/android/build/outputs/apk/debug/android-debug.apk
+apk_release     := $(BUILD_DIR)/android/build/outputs/apk/release/android-release.apk
 APK             := $(apk_debug)
 
 PACKAGE         := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/package: name='([^']+).*/\1/p")
@@ -170,7 +173,7 @@ copy-deps-check:
 			echo "✅ $$filename copiado para $$dest"; \
 		fi; \
 	}; \
-	#copy_with_check "$(BUILD_DIR)/libwxapp_arm64-v8a.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
+	copy_with_check "$(BUILD_DIR)/libwxapp_arm64-v8a.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
 	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
 	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
 	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
