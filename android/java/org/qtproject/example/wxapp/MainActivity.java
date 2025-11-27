@@ -1,23 +1,10 @@
-package org.qtproject.example.wxapp;
+@Override
+public void onWindowFocusChanged(boolean hasFocus) {
+    super.onWindowFocusChanged(hasFocus);
 
-import org.qtproject.qt5.android.bindings.QtActivity;
-
-public class MainActivity extends QtActivity {
-
-    static {
-        System.loadLibrary("wxapp");  // nossa lib nativa
-    }
-
-    private static boolean wxStarted = false;
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-
-        if (hasFocus && !wxStarted) {
-            wxStarted = true;
-            WxBridge.initWx();   // chama JNI
-        }
+    if (hasFocus && !wxStarted) {
+        wxStarted = true;
+        WxBridge.logInitCalled();   // <-- log Java
+        WxBridge.initWx();          // chama JNI
     }
 }
-
