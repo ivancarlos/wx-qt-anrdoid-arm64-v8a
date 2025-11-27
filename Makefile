@@ -95,7 +95,7 @@ configure: env
 # ------------------------------------------------------------
 # Compila projeto Qt + wxWidgets
 # ------------------------------------------------------------
-build: jni-build configure
+build:
 	@echo "==> Compilando projeto Qt..."
 	cd "$(BUILD_DIR)" && $(MAKE)
 	@echo "[OK] Build Qt concluído."
@@ -199,8 +199,8 @@ copy-deps-check:
 # ============================================================
 
 .PHONY: apk apk-readelf build find-deps-readelf
-
-apk-readelf: build find-deps-readelf copy-deps copy-deps-check
+deploy: jni-build configure build find-deps-readelf copy-deps copy-deps-check apk
+apk:
 	@echo "==> Rodando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
 		"$(ANDROIDDEPLOYQT)" \
@@ -209,7 +209,6 @@ apk-readelf: build find-deps-readelf copy-deps copy-deps-check
 			--android-platform "$(ANDROID_NDK_PLATFORM)"
 	@echo "[OK] APK gerado."
 
-apk: apk-readelf
 
 # ============================================================
 # 1) Build JNI .so com CMake + NDK
