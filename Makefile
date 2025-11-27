@@ -1,14 +1,14 @@
 # ============================================================
-# Makefile Android + Qt + wxWidgets + JNI (wxapp)
+# Makefile Android + Qt + wxWidgets + JNI (CubeGL)
 # ============================================================
 # Gera:
-#   - libwxapp_arm64-v8a.so via Qt/qmake (interface visual)
-#   - libwxapp.so via CMake/NDK (JNI + wxWidgets, opcional)
+#   - libCubeGL_arm64-v8a.so via Qt/qmake (interface visual)
+#   - libCubeGL.so via CMake/NDK (JNI + wxWidgets, opcional)
 #   - APK com androiddeployqt
 # ============================================================
 
-APP_NAME := wxapp
-LIB_NAME := libwxapp.so
+APP_NAME := CubeGL
+LIB_NAME := libCubeGL.so
 
 # ============================================================
 # CONFIGURAÇÕES Qt
@@ -90,6 +90,7 @@ configure: env
 	@mkdir -p "$(BUILD_DIR)"
 	cd "$(BUILD_DIR)" && \
 		"$(QMAKE)" -makefile ../minimal.pro \
+			"CONFIG+=release" ANDROID_ABIS=arm64-v8a	\
 			WX_ANDROID_ROOT="$(WX_ANDROID_ROOT)" \
 			QT_ARCH="$(QT_ARCH)"
 	@if [ -f "$(BUILD_DIR)/$(DEPLOY_JSON)" ]; then \
@@ -115,10 +116,10 @@ build: configure
 	@$(MAKE) copy-qt-lib
 
 copy-qt-lib:
-	@echo "==> Copiando libwxapp_arm64-v8a.so para android/libs..."
+	@echo "==> Copiando libCubeGL_arm64-v8a.so para android/libs..."
 	@mkdir -p "$(ANDROID_LIB_DIR)"
-	@cp -f "$(BUILD_DIR)/libwxapp_arm64-v8a.so" \
-	       "$(ANDROID_LIB_DIR)/libwxapp_arm64-v8a.so"
+	@cp -f "$(BUILD_DIR)/libCubeGL_arm64-v8a.so" \
+	       "$(ANDROID_LIB_DIR)/libCubeGL_arm64-v8a.so"
 	@echo "[OK] Biblioteca Qt copiada."
 
 # ============================================================
@@ -140,9 +141,9 @@ jni-build: jni-clean
 			"$(JNI_SRC_DIR)" && \
 		"$(CMAKE)" --build .
 	@mkdir -p "$(ANDROID_LIB_DIR)"
-	@if [ -f "$(JNI_BUILD_DIR)/libwxapp.so" ]; then \
-		cp -f "$(JNI_BUILD_DIR)/libwxapp.so" "$(ANDROID_LIB_DIR)/"; \
-		echo "[OK] libwxapp.so (JNI) copiado."; \
+	@if [ -f "$(JNI_BUILD_DIR)/libCubeGL.so" ]; then \
+		cp -f "$(JNI_BUILD_DIR)/libCubeGL.so" "$(ANDROID_LIB_DIR)/"; \
+		echo "[OK] libCubeGL.so (JNI) copiado."; \
 	fi
 
 jni-clean:
@@ -247,9 +248,17 @@ uninstall:
 	@echo "==> Desinstalando app..."
 	adb uninstall "$(PACKAGE)"
 
+unzip:
+	@echo "==> verificar isso rapidamente $(LIB_NAME)..."
+	unzip -l "$(APK)" | grep lib.*\.so
+
 log:
 	@echo "==> Logcat filtrado por $(PACKAGE)..."
 	adb logcat | grep --line-buffered "$(PACKAGE)"
+log2:
+	@echo "==> Logcat apenas erros e crashes..."
+	adb logcat -c              # limpa lixo anterior
+	adb logcat Qt:V *:S        # mostra só Qt + stack
 
 log3:
 	@echo "==> Logcat apenas erros e crashes..."
