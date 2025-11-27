@@ -247,7 +247,7 @@ uninstall:
 	@echo "==> Desinstalando app..."
 	adb uninstall "$(PACKAGE)"
 
-logcat:
+log:
 	@echo "==> Logcat filtrado por $(PACKAGE)..."
 	adb logcat | grep --line-buffered "$(PACKAGE)"
 
