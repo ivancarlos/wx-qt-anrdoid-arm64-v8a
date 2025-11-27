@@ -1,15 +1,26 @@
 #include "wx_app.h"
+#include <wx/frame.h>
+#include <wx/button.h>
 
 bool MyApp::OnInit()
 {
-    wxFrame* f = new wxFrame(nullptr, wxID_ANY,
-                             "wxWidgets rodando em Android (Qt backend)",
-                             wxDefaultPosition, wxSize(400, 300));
+    wxFrame* frame = new wxFrame(
+        nullptr,
+        wxID_ANY,
+        "wxWidgets no Android (backend Qt)",
+        wxDefaultPosition,
+        wxSize(400, 300)
+    );
 
-    new wxButton(f, wxID_ANY, "Clique aqui",
-                 wxPoint(20,20), wxSize(200,80));
+    new wxButton(
+        frame,
+        wxID_ANY,
+        "Olá de wxWidgets!",
+        wxPoint(20, 20),
+        wxSize(250, 80)
+    );
 
-    f->Show();
+    frame->Show();
     return true;
 }
 
@@ -18,6 +29,6 @@ int MyApp::OnExit()
     return wxApp::OnExit();
 }
 
-// IMPORTANTE
+// importante: sem main(), quem manda no processo é o Qt
 wxIMPLEMENT_APP_NO_MAIN(MyApp);
 
