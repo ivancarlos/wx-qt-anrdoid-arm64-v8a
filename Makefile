@@ -8,7 +8,6 @@
 # ============================================================
 
 APP_NAME        := wxapp
-LIB_NAME        := libwxapp.so
 
 # ============================================================
 # Qt
@@ -68,9 +67,12 @@ DEPLOY_JSON    := android-$(APP_NAME)-deployment-settings.json
 # ============================================================
 # APKs
 # ============================================================
-apk_debug       := $(BUILD_DIR)/android/build/outputs/apk/debug/android-debug.apk
-apk_release     := $(BUILD_DIR)/android/build/outputs/apk/release/android-release.apk
-APK             := $(apk_debug)
+# apk_debug   := $(BUILD_DIR)/android/build/outputs/apk/debug/android-debug.apk
+# apk_release := $(BUILD_DIR)/android/build/outputs/apk/release/android-release.apk
+apk_debug   := $(BUILD_DIR)/android-build/build/outputs/apk/debug/android-build-debug.apk
+apk_release := $(BUILD_DIR)/android-build/wxapp.apk
+APK         := $(apk_debug)
+LIB_NAME    := lib$(APP_NAME)_$(QT_ARCH).so
 
 PACKAGE         := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/package: name='([^']+).*/\1/p")
 ACTIVITYNAME    := $(shell [ -f "$(APK)" ] && $(AAPT) dump badging "$(APK)" 2>/dev/null | sed -nE "s/launchable-activity: name='([^']+).*/\1/p")
@@ -99,7 +101,6 @@ build:
 	@echo "==> Compilando projeto Qt..."
 	cd "$(BUILD_DIR)" && $(MAKE)
 	@echo "[OK] Build Qt concluído."
-
 
 # ============================================================
 # DEPENDÊNCIAS — recursivas via readelf
@@ -152,12 +153,6 @@ copy-deps:
 		done; \
 	done < "$(BUILD_DIR)/all-deps.txt"
 
-	@echo "📦 Copiando libwxapp.so"
-	cp -v "$(BUILD_DIR)/$(LIB_NAME)" "$(ANDROID_LIB_DIR)/"
-
-	@echo "📦 Copiando libc++_shared.so"
-	cp -v "$(NDK_CPP_STL_DIR)/libc++_shared.so" "$(ANDROID_LIB_DIR)/"
-
 .PHONY: copy-deps-check
 copy-deps-check:
 	@echo " 🟨($@)🟨🟨🟨🟨🟨🟨🟨🟨🟨"
@@ -173,34 +168,15 @@ copy-deps-check:
 			echo "✅ $$filename copiado para $$dest"; \
 		fi; \
 	}; \
-	copy_with_check "$(BUILD_DIR)/libwxapp_arm64-v8a.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	#copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_core-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_net-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_baseu_xml-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_adv-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_aui-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_html-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_media-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_propgrid-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_qa-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_ribbon-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_richtext-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_stc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(WX_ANDROID_ROOT)/$(QT_ARCH)/usr/lib/libwx_qtu_xrc-3.2-Android_$(QT_ARCH).so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libz.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libc.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libdl.so" "$(BUILD_DIR)/android/libs/arm64-v8a";  \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libGLESv2.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/liblog.so" "$(BUILD_DIR)/android/libs/arm64-v8a"; \
-	copy_with_check "$(TOOLCHAIN_LIB_TOOLS)/usr/lib/libm.so" "$(BUILD_DIR)/android/libs/arm64-v8a"
+	copy_with_check "$(BUILD_DIR)/$(LIB_NAME)" "$(BUILD_DIR)/android/libs/arm64-v8a";
+
 # ============================================================
 # APK
 # ============================================================
 
 .PHONY: apk apk-readelf build find-deps-readelf
 # deploy: jni-build configure build find-deps-readelf copy-deps copy-deps-check apk
-deploy: configure build apk
+deploy: configure build find-deps-readelf copy-deps apk
 apk:
 	make -C$(BUILD_DIR) $@
 	@echo "[OK] APK gerado."
