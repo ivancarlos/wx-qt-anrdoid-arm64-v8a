@@ -37,7 +37,8 @@ SOURCES += $$_PRO_FILE_PWD_/qt_stub.cpp
 #   $$_PRO_FILE_PWD_/android/AndroidManifest.xml
 #
 #ANDROID_PACKAGE_SOURCE_DIR = $$_PRO_FILE_PWD_/android
-ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android/java
+#ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android/java
+ANDROID_PACKAGE_SOURCE_DIR = $$_PRO_FILE_PWD_/android
 
 # ------------------------------------------------------------
 # Bibliotecas nativas extras
