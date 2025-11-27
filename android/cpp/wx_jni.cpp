@@ -1,30 +1,34 @@
-#include "wx_app.h"
-#include <android/log.h> // <-- adiciona
 #include <jni.h>
-#include <wx/app.h>
-#include <wx/wx.h>
+#include <android/log.h>
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "WXAPP", __VA_ARGS__)
+#include <wx/wx.h>
+#include "wx_app.h"
+
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "WXAPP", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "WXAPP", __VA_ARGS__)
 
 extern "C" JNIEXPORT void JNICALL
-Java_org_qtproject_example_wxapp_WxBridge_initWx(JNIEnv *, jclass) {
-  static bool initialized = false;
+Java_org_qtproject_example_wxapp_WxBridge_initWx(JNIEnv* env, jclass)
+{
+    static bool initialized = false;
 
-  LOGI("initWx JNI chamado (initialized=%d)", initialized);
+    LOGI("initWx JNI chamado (initialized=%d)", initialized);
 
-  if (initialized)
-    return;
+    if (initialized) {
+        LOGI("initWx já foi chamado antes, retornando.");
+        return;
+    }
+    initialized = true;
 
-  initialized = true;
+    // instancia da sua wxApp
+    wxApp::SetInstance(new MyApp());
 
-  wxApp::SetInstance(new MyApp());
+    int argc = 1;
+    char appName[] = "wxapp";
+    char* argv[] = { appName, nullptr };
 
-  int argc = 1;
-  char appName[] = "wxapp";
-  char *argv[] = {appName, nullptr};
-
-  LOGI("Chamando wxEntry...");
-  wxEntry(argc, argv);
-  LOGI("Retornou de wxEntry");
+    LOGI("Chamando wxEntry...");
+    wxEntry(argc, argv);
+    LOGI("Retornou de wxEntry");
 }
+
