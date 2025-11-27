@@ -199,14 +199,19 @@ copy-deps-check:
 # ============================================================
 
 .PHONY: apk apk-readelf build find-deps-readelf
-deploy: jni-build configure build find-deps-readelf copy-deps copy-deps-check apk
+# deploy: jni-build configure build find-deps-readelf copy-deps copy-deps-check apk
+deploy: configure build apk
 apk:
+	make -C$(BUILD_DIR) $@
+	@echo "[OK] APK gerado."
+
+apk-local:
 	@echo "==> Rodando androiddeployqt..."
 	cd "$(BUILD_DIR)" && \
-		"$(ANDROIDDEPLOYQT)" \
-			--input "$(DEPLOY_JSON)" \
-			--output android \
-			--android-platform "$(ANDROID_NDK_PLATFORM)"
+	"$(ANDROIDDEPLOYQT)" \
+		--input "$(DEPLOY_JSON)" \
+		--output android \
+		--android-platform "$(ANDROID_NDK_PLATFORM)"
 	@echo "[OK] APK gerado."
 
 
