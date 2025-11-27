@@ -222,16 +222,6 @@ apk: configure build find-deps-readelf copy-deps
 	@echo "    $(APK_DEBUG)"
 	@echo ""
 
-# APK local (sem dependências, para testes rápidos)
-apk-local:
-	@echo "==> Gerando APK local (sem verificação de deps)..."
-	cd "$(BUILD_DIR)" && \
-		"$(ANDROIDDEPLOYQT)" \
-			--input "$(DEPLOY_JSON)" \
-			--output android \
-			--android-platform "$(ANDROID_NDK_PLATFORM)"
-	@echo "[OK] APK local gerado."
-
 # ============================================================
 # 6. UTILITÁRIOS ADB
 # ============================================================
